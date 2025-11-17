@@ -30,6 +30,8 @@ export default () => {
           router.post('/auth/logout-device', [AdminAuthController, 'logoutDevice'])
           router.get('/auth/stats', [AdminAuthController, 'stats'])
           router.get('/auth/sessions', [AdminAuthController, 'sessions'])
+          router.post('/auth/update-fcm-token', [AdminAuthController, 'updateFcmToken'])
+          router.get('/auth/security-alerts', [AdminAuthController, 'securityAlerts'])
 
           // ---- Events ----
           router.get('/events', [AdminEventController, 'index'])
@@ -72,7 +74,7 @@ export default () => {
           router.delete('/bulk/registrations', [BulkController, 'deleteRegistrations'])
 
         })
-        .middleware(middleware.adminApi())
+        .middleware([middleware.adminApi(), middleware.rateLimit()])
     })
     .prefix('/api/admin')
 }

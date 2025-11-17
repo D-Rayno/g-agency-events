@@ -93,6 +93,7 @@
     "eslint-plugin-react-hooks": "^7.0.0",
     "eslint-plugin-react-refresh": "^0.4.24",
     "exceljs": "^4.4.0",
+    "firebase-admin": "^13.6.0",
     "lucide-react": "^0.547.0",
     "luxon": "^3.7.2",
     "motion": "^12.23.24",

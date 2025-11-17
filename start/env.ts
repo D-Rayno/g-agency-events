@@ -71,4 +71,7 @@ export default await Env.create(new URL('../', import.meta.url), {
   TYPESENSE_PORT: Env.schema.string(),
   TYPESENSE_PROTOCOL: Env.schema.enum(['http', 'https'] as const),
   TYPESENSE_API_KEY: Env.schema.string(),
+
+  TOKEN_ENCRYPTION_KEY: Env.schema.string(),
+  FIREBASE_SERVICE_ACCOUNT_PATH: Env.schema.string(),
 })

@@ -1,51 +1,41 @@
 // app/controllers/api/admin/auth_controller.ts
 import type { HttpContext } from '@adonisjs/core/http'
-import env from '#start/env'
 import TokenStoreService from '#services/token_store_service'
 import { loginValidator } from '#validators/admin_login'
 
 export default class AuthController {
   /**
-   * Authentification avec le token statique + informations de l'appareil
+   * Enhanced authentication with device fingerprinting and FCM token
    * 
    * POST /api/admin/auth/login
    * Body: { 
-   *   token: "votre_token_admin_statique",
    *   deviceId: "unique_device_identifier",
    *   deviceName: "iPhone 14 Pro",
-   *   deviceInfo: { os: "iOS", version: "17.0" }
+   *   deviceModel: "iPhone14,3",
+   *   osVersion: "17.0",
+   *   appVersion: "1.0.0",
+   *   fcmToken: "firebase_cloud_messaging_token" (optional)
    * }
    */
   async login({ request, response }: HttpContext) {
     try {
       const data = await request.validateUsing(loginValidator)
-
-      // Vérifier le token statique
-      if (data.token !== env.get('ADMIN_API_TOKEN')) {
-        return response.unauthorized({
-          error: 'Token invalide',
-          message: 'Le token fourni est incorrect.',
-        })
-      }
-
-      // Récupérer les métadonnées de l'appareil
-      const deviceId = data.deviceId || request.header('X-Device-Id')
-      const deviceName = data.deviceName || 'Unknown Device'
-      const userAgent = request.header('User-Agent')
-
-      if (!deviceId) {
-        return response.badRequest({
-          error: 'Device ID manquant',
-          message: 'Un identifiant unique de l\'appareil est requis pour la sécurité.',
-        })
-      }
-
-      // Générer une nouvelle paire de tokens
-      const tokenPair = await TokenStoreService.generateTokenPair(
-        deviceId,
-        deviceName,
-        userAgent
-      )
+      
+      // Get client information
+      const ipAddress = request.ip()
+      const userAgent = request.header('User-Agent') || 'unknown'
+      
+      // Generate secure token pair
+      const tokenPair = await TokenStoreService.generateTokenPair({
+        deviceId: data.deviceId,
+        deviceName: data.deviceName || 'Unknown Device',
+        deviceModel: data.deviceModel,
+        osVersion: data.osVersion,
+        appVersion: data.appVersion,
+        ipAddress,
+        userAgent,
+        fcmToken: data.fcmToken,
+      })
 
       return response.ok({
         success: true,
@@ -57,12 +47,23 @@ export default class AuthController {
           expiresIn: tokenPair.expiresIn,
           refreshExpiresAt: tokenPair.refreshExpiresAt,
           tokenType: 'Bearer',
-          deviceId,
-          deviceName,
+          device: {
+            deviceId: data.deviceId,
+            deviceName: data.deviceName,
+            deviceModel: data.deviceModel,
+          },
         },
       })
     } catch (error) {
       console.error('Login error:', error)
+      
+      if (error.message?.includes('Too many devices')) {
+        return response.tooManyRequests({
+          error: 'Limite atteinte',
+          message: error.message,
+        })
+      }
+      
       return response.badRequest({
         error: 'Validation error',
         message: error.messages || 'Les données fournies sont invalides.',
@@ -71,7 +72,7 @@ export default class AuthController {
   }
 
   /**
-   * Rafraîchir un token expiré
+   * Refresh an expired token
    * 
    * POST /api/admin/auth/refresh
    * Body: { refreshToken: "votre_refresh_token" }
@@ -86,12 +87,20 @@ export default class AuthController {
       })
     }
 
-    const newTokenPair = await TokenStoreService.refreshToken(refreshToken)
+    const ipAddress = request.ip()
+    const userAgent = request.header('User-Agent') || 'unknown'
+
+    const newTokenPair = await TokenStoreService.refreshToken(
+      refreshToken,
+      ipAddress,
+      userAgent
+    )
 
     if (!newTokenPair) {
       return response.unauthorized({
         error: 'Refresh token invalide',
-        message: 'Le refresh token est invalide, expiré ou déjà utilisé. Veuillez vous reconnecter.',
+        message: 'Le refresh token est invalide, expiré ou révoqué. Veuillez vous reconnecter.',
+        code: 'REFRESH_TOKEN_INVALID',
       })
     }
 
@@ -110,7 +119,39 @@ export default class AuthController {
   }
 
   /**
-   * Vérifier le statut d'authentification
+   * Update FCM token for push notifications
+   * 
+   * POST /api/admin/auth/update-fcm-token
+   * Body: { fcmToken: "new_firebase_token" }
+   */
+  async updateFcmToken({ request, response }: HttpContext) {
+    const token = request.header('Authorization')?.replace('Bearer ', '')
+    const { fcmToken } = request.only(['fcmToken'])
+
+    if (!token || !fcmToken) {
+      return response.badRequest({
+        error: 'Données manquantes',
+        message: 'Le token et le FCM token sont requis.',
+      })
+    }
+
+    const updated = await TokenStoreService.updateFcmToken(token, fcmToken)
+
+    if (!updated) {
+      return response.notFound({
+        error: 'Token invalide',
+        message: 'Le token fourni est invalide.',
+      })
+    }
+
+    return response.ok({
+      success: true,
+      message: 'FCM token mis à jour avec succès',
+    })
+  }
+
+  /**
+   * Verify authentication status
    * 
    * GET /api/admin/auth/check
    */
@@ -137,17 +178,30 @@ export default class AuthController {
       authenticated: true,
       message: 'Token valide',
       data: {
-        expiresAt: tokenInfo.expiresAt,
-        deviceId: tokenInfo.deviceId,
-        deviceName: tokenInfo.deviceName,
-        createdAt: tokenInfo.createdAt,
-        lastUsedAt: tokenInfo.lastUsedAt,
+        device: {
+          deviceId: tokenInfo.deviceId,
+          deviceName: tokenInfo.deviceName,
+          deviceModel: tokenInfo.deviceModel,
+          osVersion: tokenInfo.osVersion,
+          appVersion: tokenInfo.appVersion,
+        },
+        session: {
+          createdAt: tokenInfo.createdAt,
+          expiresAt: tokenInfo.expiresAt,
+          lastUsedAt: tokenInfo.lastUsedAt,
+          loginCount: tokenInfo.loginCount,
+        },
+        security: {
+          ipAddress: tokenInfo.lastIpAddress,
+          failedAttempts: tokenInfo.failedAttempts,
+        },
+        hasFcmToken: !!tokenInfo.fcmToken,
       },
     })
   }
 
   /**
-   * Déconnexion (révocation du token actuel)
+   * Logout (revoke current token)
    * 
    * POST /api/admin/auth/logout
    */
@@ -165,7 +219,7 @@ export default class AuthController {
   }
 
   /**
-   * Déconnexion de tous les appareils
+   * Logout from all devices
    * 
    * POST /api/admin/auth/logout-all
    */
@@ -179,7 +233,7 @@ export default class AuthController {
   }
 
   /**
-   * Déconnexion d'un appareil spécifique
+   * Logout specific device
    * 
    * POST /api/admin/auth/logout-device
    * Body: { deviceId: "device_id" }
@@ -203,7 +257,7 @@ export default class AuthController {
   }
 
   /**
-   * Statistiques des tokens actifs
+   * Get token statistics
    * 
    * GET /api/admin/auth/stats
    */
@@ -217,7 +271,7 @@ export default class AuthController {
   }
 
   /**
-   * Liste toutes les sessions actives (appareils connectés)
+   * List all active sessions
    * 
    * GET /api/admin/auth/sessions
    */
@@ -229,6 +283,23 @@ export default class AuthController {
       data: {
         count: sessions.length,
         sessions,
+      },
+    })
+  }
+
+  /**
+   * Get security alerts
+   * 
+   * GET /api/admin/auth/security-alerts
+   */
+  async securityAlerts({ response }: HttpContext) {
+    const alerts = await TokenStoreService.getSecurityAlerts()
+
+    return response.ok({
+      success: true,
+      data: {
+        count: alerts.length,
+        alerts,
       },
     })
   }
