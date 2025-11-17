@@ -1,4 +1,4 @@
-// inertia/pages/home.tsx - ENHANCED VERSION WITH BETTER UX
+// inertia/pages/home.tsx - REFINED VERSION
 import { Head } from '@inertiajs/react'
 import {
   CalendarIcon,
@@ -19,7 +19,7 @@ import Card from '~/components/ui/Card'
 import Badge from '~/components/ui/Badge'
 import { useTheme } from '~/hooks/useTheme'
 import { useAuthStore } from '~/stores/auth'
-import { motion, useScroll, useTransform, useInView } from 'motion/react'
+import { motion, useScroll, useTransform, useInView, AnimatePresence } from 'motion/react'
 import { useRef } from 'react'
 
 export default function Home() {
@@ -27,16 +27,13 @@ export default function Home() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated())
   const user = useAuthStore((s) => s.user)
 
-  const heroRef = useRef(null)
+  const heroRef = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({
     target: heroRef,
     offset: ['start start', 'end start'],
   })
 
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
-  const heroScale = useTransform(scrollYProgress, [0, 0.5], [1, 0.95])
-  const heroY = useTransform(scrollYProgress, [0, 0.5], [0, 100])
-  const heroBlur = useTransform(scrollYProgress, [0, 0.5], [0, 10])
+  const heroY = useTransform(scrollYProgress, [0, 1], [0, 300])
 
   const features = [
     {
@@ -102,14 +99,6 @@ export default function Home() {
     },
   ]
 
-  const floatingElements = [
-    { emoji: '🎉', x: '10%', y: '20%', delay: 0.5, duration: 3 },
-    { emoji: '🎟️', x: '85%', y: '70%', delay: 0.8, duration: 4 },
-    { emoji: '🎭', x: '75%', y: '30%', delay: 1.2, duration: 3.5 },
-    { emoji: '🎪', x: '15%', y: '65%', delay: 1.5, duration: 4.5 },
-    { emoji: '🎨', x: '90%', y: '15%', delay: 0.3, duration: 5 },
-  ]
-
   return (
     <>
       <Head>
@@ -118,100 +107,101 @@ export default function Home() {
         <meta name="keywords" content={config.seo.keywords.join(', ')} />
       </Head>
 
-      <AppLayout>
-        {/* Enhanced Hero Section with Parallax */}
+      <AppLayout layout="full" showHeader={true} showFooter={true}>
+        {/* ENHANCED HERO SECTION - FULL WIDTH */}
         <section
           ref={heroRef}
-          className="relative min-h-screen flex items-center justify-center overflow-hidden"
+          className="relative w-full min-h-screen flex items-center justify-center overflow-hidden"
         >
-          {/* Animated Background */}
-          <motion.div
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-            style={{
-              backgroundImage: `url(${config.images.banner.home})`,
-              scale: heroScale,
-              filter: useTransform(heroBlur, (v) => `blur(${v}px)`),
-            }}
-          />
+          {/* Background Image with Parallax */}
+          <motion.div className="absolute inset-0 z-0" style={{ y: heroY }}>
+            <div
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+              style={{
+                backgroundImage: `url(${config.images.banner.home})`,
+              }}
+            />
+            {/* Dark gradient overlay for better text readability */}
+            <div className="absolute inset-0 bg-linear-to-b from-black/60 via-black/50 to-black/70" />
 
-          {/* Gradient Overlay with Animation */}
-          <motion.div
-            className="absolute inset-0"
-            style={{
-              background: `linear-gradient(135deg, ${colors.primary[900]}f0, ${colors.primary[800]}e8, ${colors.secondary[900]}f0)`,
-              opacity: heroOpacity,
-            }}
-          />
+            {/* Animated gradient overlay */}
+            <motion.div
+              className="absolute inset-0"
+              style={{
+                background: `radial-gradient(circle at 50% 50%, ${colors.primary[500]}15, transparent 70%)`,
+              }}
+              animate={{
+                scale: [1, 1.2, 1],
+                opacity: [0.3, 0.5, 0.3],
+              }}
+              transition={{
+                duration: 8,
+                repeat: Infinity,
+                ease: 'easeInOut',
+              }}
+            />
+          </motion.div>
 
           {/* Animated Grid Pattern */}
-          <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0 z-1 opacity-[0.03]">
             <div
               className="absolute inset-0"
               style={{
-                backgroundImage: `linear-gradient(${colors.primary[500]} 1px, transparent 1px), linear-gradient(90deg, ${colors.primary[500]} 1px, transparent 1px)`,
-                backgroundSize: '50px 50px',
+                backgroundImage: `linear-gradient(${colors.primary[500]} 1.5px, transparent 1.5px), linear-gradient(90deg, ${colors.primary[500]} 1.5px, transparent 1.5px)`,
+                backgroundSize: '60px 60px',
               }}
             />
           </div>
 
-          {/* Floating Elements */}
-          {floatingElements.map((element, index) => (
+          {/* Floating Particles */}
+          {[...Array(20)].map((_, i) => (
             <motion.div
-              key={index}
-              className="absolute text-6xl pointer-events-none select-none cursor-default"
+              key={i}
+              className="absolute w-2 h-2 bg-white rounded-full opacity-20 z-1 pointer-events-none"
               style={{
-                left: element.x,
-                top: element.y,
-                filter: 'drop-shadow(0 10px 30px rgba(0,0,0,0.3))',
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
               }}
-              initial={{ opacity: 0, scale: 0, rotate: -180 }}
               animate={{
-                opacity: [0.2, 0.5, 0.2],
-                scale: [1, 1.3, 1],
-                rotate: [0, 360],
                 y: [0, -30, 0],
+                opacity: [0.2, 0.5, 0.2],
+                scale: [1, 1.5, 1],
               }}
               transition={{
-                delay: element.delay,
-                duration: element.duration,
+                duration: 3 + Math.random() * 2,
                 repeat: Infinity,
+                delay: Math.random() * 2,
                 ease: 'easeInOut',
               }}
-            >
-              {element.emoji}
-            </motion.div>
+            />
           ))}
 
           {/* Main Content */}
-          <motion.div
-            className="relative z-10 text-center max-w-6xl mx-auto px-6 py-24"
-            style={{ y: heroY }}
-          >
+          <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 text-center">
             {/* Welcome Badge */}
-            {isAuthenticated && user && (
-              <motion.div
-                className="mb-8"
-                initial={{ opacity: 0, y: -30, scale: 0.8 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.6, type: 'spring', stiffness: 200 }}
-              >
+            <AnimatePresence>
+              {isAuthenticated && user && (
                 <motion.div
-                  className="cursor-pointer"
-                  whileHover={{ scale: 1.08, rotate: [0, -3, 3, 0] }}
-                  transition={{ duration: 0.4 }}
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.5 }}
+                  className="mb-8"
                 >
-                  <Badge variant="success" size="lg" rounded pulse>
-                    <SparklesSolidIcon className="w-5 h-5" />
-                    Bienvenue, {user.firstName}! 🎉
-                  </Badge>
+                  <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.3 }}>
+                    <Badge variant="success" size="lg" pulse className="cursor-default">
+                      <SparklesSolidIcon className="w-5 h-5" />
+                      Bienvenue, {user.firstName}! 🎉
+                    </Badge>
+                  </motion.div>
                 </motion.div>
-              </motion.div>
-            )}
+              )}
+            </AnimatePresence>
 
-            {/* Main Title with Stagger Animation */}
+            {/* Main Title */}
             <motion.h1
-              className="text-6xl md:text-8xl lg:text-9xl font-bold text-white mb-8 leading-tight"
-              initial={{ opacity: 0, y: 80 }}
+              className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white mb-6 leading-tight"
+              initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
             >
@@ -219,10 +209,9 @@ export default function Home() {
                 className="inline-block cursor-default"
                 whileHover={{
                   scale: 1.05,
-                  rotate: [-1, 1, -1, 0],
-                  textShadow: `0 0 30px ${colors.primary[300]}`,
-                  transition: { duration: 0.5 },
+                  textShadow: `0 0 30px ${colors.primary[400]}`,
                 }}
+                transition={{ duration: 0.3 }}
               >
                 {appName}
               </motion.span>
@@ -230,18 +219,18 @@ export default function Home() {
 
             {/* Tagline */}
             <motion.p
-              className="text-2xl md:text-4xl text-white/95 mb-12 max-w-4xl mx-auto font-light leading-relaxed"
-              initial={{ opacity: 0, y: 60 }}
+              className="text-xl sm:text-2xl md:text-3xl text-white/95 mb-12 max-w-4xl mx-auto font-light leading-relaxed"
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
             >
               {appTagline}
             </motion.p>
 
-            {/* CTA Buttons with Enhanced Animations */}
+            {/* CTA Buttons */}
             <motion.div
-              className="flex flex-col sm:flex-row gap-6 justify-center items-center"
-              initial={{ opacity: 0, y: 40 }}
+              className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.6 }}
             >
@@ -254,7 +243,6 @@ export default function Home() {
                 flipDirection="right"
                 flipBackText="Explorez maintenant ✨"
                 shadow="xl"
-                className="cursor-pointer"
               >
                 Découvrir les événements
               </Button>
@@ -269,7 +257,6 @@ export default function Home() {
                   flipDirection="top"
                   flipBackText="Rejoignez-nous 🚀"
                   shadow="lg"
-                  className="cursor-pointer"
                 >
                   Créer un compte
                 </Button>
@@ -285,7 +272,6 @@ export default function Home() {
                   flipDirection="left"
                   flipBackText="Voir mes événements 📅"
                   shadow="lg"
-                  className="cursor-pointer"
                 >
                   Mes inscriptions
                 </Button>
@@ -294,44 +280,37 @@ export default function Home() {
 
             {/* Scroll Indicator */}
             <motion.div
-              className="absolute bottom-0 left-1/2 transform -translate-x-1/2 cursor-pointer"
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
+              className="absolute bottom-8 left-1/2 transform -translate-x-1/2 cursor-pointer"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               transition={{ delay: 1.2, duration: 0.8 }}
               whileHover={{ scale: 1.1 }}
               onClick={() => window.scrollBy({ top: window.innerHeight, behavior: 'smooth' })}
             >
               <motion.div
-                animate={{ y: [0, 15, 0] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-                className="text-white/80 flex flex-col items-center gap-3"
+                animate={{ y: [0, 10, 0] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="text-white/80 flex flex-col items-center gap-2"
               >
-                <span className="text-sm font-medium tracking-wider">Découvrez plus</span>
-                <motion.svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  animate={{ y: [0, 5, 0] }}
-                  transition={{ duration: 1, repeat: Infinity }}
-                >
+                <span className="text-sm font-medium">Découvrez plus</span>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
                     d="M19 14l-7 7m0 0l-7-7m7 7V3"
                   />
-                </motion.svg>
+                </svg>
               </motion.div>
             </motion.div>
-          </motion.div>
+          </div>
         </section>
 
-        {/* Features Section with Enhanced Cards */}
+        {/* Features Section */}
         <section className="py-32 bg-linear-to-b from-white to-neutral-50 relative overflow-hidden">
           {/* Background Decorations */}
           <motion.div
-            className="absolute top-0 left-0 w-96 h-96 rounded-full blur-3xl opacity-10"
+            className="absolute top-0 left-0 w-96 h-96 rounded-full blur-3xl opacity-10 pointer-events-none"
             style={{ background: colors.primary[300] }}
             animate={{
               scale: [1, 1.2, 1],
@@ -341,7 +320,7 @@ export default function Home() {
             transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
           />
           <motion.div
-            className="absolute bottom-0 right-0 w-96 h-96 rounded-full blur-3xl opacity-10"
+            className="absolute bottom-0 right-0 w-96 h-96 rounded-full blur-3xl opacity-10 pointer-events-none"
             style={{ background: colors.secondary[300] }}
             animate={{
               scale: [1.2, 1, 1.2],
@@ -356,7 +335,7 @@ export default function Home() {
               className="text-center mb-20"
               initial={{ opacity: 0, y: 40 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-100px' }}
+              viewport={{ once: true, amount: 0.3 }}
               transition={{ duration: 0.6 }}
             >
               <motion.div
@@ -387,7 +366,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Stats Section with Counter Animation */}
+        {/* Stats Section */}
         <section
           className="py-24 relative overflow-hidden"
           style={{
@@ -403,14 +382,14 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Benefits Section with Image */}
+        {/* Benefits Section */}
         <section className="py-32 bg-white overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid lg:grid-cols-2 gap-20 items-center">
               <motion.div
                 initial={{ opacity: 0, x: -80 }}
                 whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, margin: '-100px' }}
+                viewport={{ once: true, amount: 0.3 }}
                 transition={{ duration: 0.8 }}
               >
                 <Badge variant="info" size="lg" className="mb-6 cursor-default">
@@ -447,7 +426,6 @@ export default function Home() {
                     flipDirection="right"
                     flipBackText="Commencer maintenant ✨"
                     shadow="xl"
-                    className="cursor-pointer"
                   >
                     Commencer gratuitement
                   </Button>
@@ -461,7 +439,6 @@ export default function Home() {
                     flipDirection="right"
                     flipBackText="Voir les événements 🎉"
                     shadow="xl"
-                    className="cursor-pointer"
                   >
                     Explorer les événements
                   </Button>
@@ -473,16 +450,16 @@ export default function Home() {
           </div>
         </section>
 
-        {/* CTA Section with Gradient Background */}
+        {/* CTA Section */}
         <CTASection isAuthenticated={isAuthenticated} colors={colors} />
 
-        {/* Contact Section with Hover Effects */}
+        {/* Contact Section */}
         <ContactSection config={config} colors={colors} />
 
-        {/* Trust Badges Section */}
+        {/* Trust Badges */}
         <TrustBadges colors={colors} />
 
-        {/* Final CTA Banner */}
+        {/* Final CTA */}
         <FinalCTA isAuthenticated={isAuthenticated} appName={appName} colors={colors} />
       </AppLayout>
     </>
@@ -490,16 +467,29 @@ export default function Home() {
 }
 
 // Feature Card Component
-function FeatureCard({ feature, index }: any) {
+interface FeatureCardProps {
+  feature: {
+    icon: React.ComponentType<{ className?: string }>
+    title: string
+    description: string
+    gradient: string
+    iconColor: string
+  }
+  index: number
+}
+
+function FeatureCard({ feature, index }: FeatureCardProps) {
+  const ref = useRef<HTMLDivElement>(null)
+  const isInView = useInView(ref, { once: true, amount: 0.3 })
+
   return (
     <motion.div
+      ref={ref}
       initial={{ opacity: 0, y: 50 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      animate={isInView ? { opacity: 1, y: 0 } : {}}
       transition={{ delay: index * 0.15, duration: 0.5 }}
-      viewport={{ once: true, margin: '-50px' }}
-      className="cursor-pointer"
     >
-      <motion.div whileHover={{ y: -10 }}>
+      <motion.div whileHover={{ y: -10 }} transition={{ duration: 0.3 }}>
         <Card
           hoverable
           className="h-full text-center p-8 border-2 border-transparent hover:border-current transition-all duration-300"
@@ -525,22 +515,32 @@ function FeatureCard({ feature, index }: any) {
 }
 
 // Stat Card Component
-function StatCard({ stat, index }: any) {
-  const ref = useRef(null)
-  const isInView = useInView(ref, { once: true })
+interface StatCardProps {
+  stat: {
+    label: string
+    value: string
+    icon: React.ComponentType<{ className?: string }>
+    color: string
+    description: string
+  }
+  index: number
+}
+
+function StatCard({ stat, index }: StatCardProps) {
+  const ref = useRef<HTMLDivElement>(null)
+  const isInView = useInView(ref, { once: true, amount: 0.5 })
 
   return (
     <motion.div
       ref={ref}
       className="text-center cursor-default"
       initial={{ opacity: 0, scale: 0.5 }}
-      whileInView={{ opacity: 1, scale: 1 }}
+      animate={isInView ? { opacity: 1, scale: 1 } : {}}
       transition={{
         delay: index * 0.2,
         type: 'spring',
         stiffness: 200,
       }}
-      viewport={{ once: true }}
     >
       <motion.div
         className="inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-white shadow-2xl mb-6 relative cursor-pointer"
@@ -551,7 +551,7 @@ function StatCard({ stat, index }: any) {
         }}
         transition={{ duration: 0.6 }}
       >
-        <stat.icon className="w-12 h-12" style={{ color: stat.color }} />
+        <stat.icon className="w-12 h-12" />
         <motion.div
           className="absolute -top-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg"
           style={{ background: stat.color }}
@@ -582,14 +582,23 @@ function StatCard({ stat, index }: any) {
 }
 
 // Benefit Item Component
-function BenefitItem({ benefit, index, colors }: any) {
+interface BenefitItemProps {
+  benefit: {
+    text: string
+    icon: React.ComponentType<{ className?: string }>
+  }
+  index: number
+  colors: any
+}
+
+function BenefitItem({ benefit, index, colors }: BenefitItemProps) {
   return (
     <motion.div
       className="flex items-start gap-4 cursor-pointer"
       initial={{ opacity: 0, x: -30 }}
       whileInView={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.1 }}
-      viewport={{ once: true }}
+      viewport={{ once: true, amount: 0.5 }}
       whileHover={{ x: 10 }}
     >
       <motion.div
@@ -598,6 +607,7 @@ function BenefitItem({ benefit, index, colors }: any) {
           background: `linear-gradient(135deg, ${colors.success[400]}, ${colors.success[600]})`,
         }}
         whileHover={{ scale: 1.15, rotate: 5 }}
+        transition={{ duration: 0.3 }}
       >
         <benefit.icon className="w-6 h-6 text-white" />
       </motion.div>
@@ -609,13 +619,18 @@ function BenefitItem({ benefit, index, colors }: any) {
 }
 
 // Image Showcase Component
-function ImageShowcase({ config, colors }: any) {
+interface ImageShowcaseProps {
+  config: any
+  colors: any
+}
+
+function ImageShowcase({ config, colors }: ImageShowcaseProps) {
   return (
     <motion.div
       className="relative"
       initial={{ opacity: 0, x: 80 }}
       whileInView={{ opacity: 1, x: 0 }}
-      viewport={{ once: true, margin: '-100px' }}
+      viewport={{ once: true, amount: 0.3 }}
       transition={{ duration: 0.8 }}
     >
       <motion.div
@@ -680,7 +695,12 @@ function ImageShowcase({ config, colors }: any) {
 }
 
 // CTA Section Component
-function CTASection({ isAuthenticated, colors }: any) {
+interface CTASectionProps {
+  isAuthenticated: boolean
+  colors: any
+}
+
+function CTASection({ isAuthenticated, colors }: CTASectionProps) {
   return (
     <section
       className="py-32 text-white relative overflow-hidden"
@@ -715,7 +735,7 @@ function CTASection({ isAuthenticated, colors }: any) {
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={{ once: true, amount: 0.3 }}
           transition={{ duration: 0.6 }}
         >
           <motion.div
@@ -723,9 +743,12 @@ function CTASection({ isAuthenticated, colors }: any) {
             whileInView={{ scale: 1 }}
             viewport={{ once: true }}
             transition={{ type: 'spring', stiffness: 200 }}
-            className="cursor-pointer inline-block"
           >
-            <Badge variant="neutral" size="lg" className="mb-8 bg-white/20 backdrop-blur-sm">
+            <Badge
+              variant="neutral"
+              size="lg"
+              className="mb-8 bg-white/20 backdrop-blur-sm cursor-default"
+            >
               <RocketLaunchIcon className="w-5 h-5" />
               Rejoignez-nous
             </Badge>
@@ -758,7 +781,6 @@ function CTASection({ isAuthenticated, colors }: any) {
                   flipDirection="top"
                   flipBackText="Commencez maintenant 🚀"
                   shadow="xl"
-                  className="min-w-[250px] cursor-pointer"
                 >
                   S'inscrire gratuitement
                 </Button>
@@ -771,7 +793,6 @@ function CTASection({ isAuthenticated, colors }: any) {
                   flipDirection="bottom"
                   flipBackText="Découvrez-les 🎉"
                   shadow="lg"
-                  className="min-w-[250px] cursor-pointer"
                 >
                   Voir les événements
                 </Button>
@@ -787,7 +808,6 @@ function CTASection({ isAuthenticated, colors }: any) {
                 flipDirection="right"
                 flipBackText="Explorez maintenant 🎊"
                 shadow="xl"
-                className="min-w-[300px] cursor-pointer"
               >
                 Explorer les événements
               </Button>
@@ -800,7 +820,12 @@ function CTASection({ isAuthenticated, colors }: any) {
 }
 
 // Contact Section Component
-function ContactSection({ config, colors }: any) {
+interface ContactSectionProps {
+  config: any
+  colors: any
+}
+
+function ContactSection({ config, colors }: ContactSectionProps) {
   const contactCards = [
     {
       icon: '✉️',
@@ -838,7 +863,7 @@ function ContactSection({ config, colors }: any) {
           className="text-center mb-20"
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={{ once: true, amount: 0.3 }}
         >
           <Badge variant="primary" size="lg" className="mb-6 cursor-default">
             <HeartIcon className="w-5 h-5" />
@@ -856,14 +881,10 @@ function ContactSection({ config, colors }: any) {
               key={card.title}
               initial={{ opacity: 0, y: 40 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, amount: 0.3 }}
               transition={{ delay: index * 0.1 }}
             >
-              <motion.div
-                whileHover={{ y: -10 }}
-                transition={{ duration: 0.3 }}
-                className="cursor-pointer"
-              >
+              <motion.div whileHover={{ y: -10 }} transition={{ duration: 0.3 }}>
                 <Card hoverable className="text-center h-full p-8">
                   <motion.div
                     className="w-20 h-20 mx-auto mb-6 rounded-2xl flex items-center justify-center text-5xl shadow-xl cursor-pointer"
@@ -885,7 +906,6 @@ function ContactSection({ config, colors }: any) {
                     flipOnHover
                     flipDirection="right"
                     flipBackText={card.flipText}
-                    className="cursor-pointer"
                   >
                     {card.buttonText}
                   </Button>
@@ -900,7 +920,7 @@ function ContactSection({ config, colors }: any) {
           className="mt-20 text-center"
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={{ once: true, amount: 0.3 }}
           transition={{ delay: 0.4 }}
         >
           <motion.div
@@ -909,6 +929,7 @@ function ContactSection({ config, colors }: any) {
               background: `linear-gradient(135deg, ${colors.primary[50]}, ${colors.secondary[50]})`,
             }}
             whileHover={{ scale: 1.05 }}
+            transition={{ duration: 0.3 }}
           >
             <div className="flex -space-x-3">
               {[...Array(4)].map((_, i) => (
@@ -950,7 +971,11 @@ function ContactSection({ config, colors }: any) {
 }
 
 // Trust Badges Component
-function TrustBadges({ colors }: any) {
+interface TrustBadgesProps {
+  colors: any
+}
+
+function TrustBadges({ colors }: TrustBadgesProps) {
   const badges = [
     { icon: '🔒', title: 'Paiement sécurisé', desc: '100% sûr' },
     { icon: '⚡', title: 'Inscription rapide', desc: 'En 2 minutes' },
@@ -970,7 +995,7 @@ function TrustBadges({ colors }: any) {
           className="grid md:grid-cols-4 gap-8 text-white text-center"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
+          viewport={{ once: true, amount: 0.3 }}
         >
           {badges.map((badge, index) => (
             <motion.div
@@ -978,13 +1003,14 @@ function TrustBadges({ colors }: any) {
               className="cursor-default"
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, amount: 0.3 }}
               transition={{ delay: index * 0.1 }}
               whileHover={{ scale: 1.08, y: -5 }}
             >
               <motion.div
                 className="text-5xl mb-3"
                 whileHover={{ scale: 1.2, rotate: [0, -10, 10, 0] }}
+                transition={{ duration: 0.5 }}
               >
                 {badge.icon}
               </motion.div>
@@ -999,7 +1025,13 @@ function TrustBadges({ colors }: any) {
 }
 
 // Final CTA Component
-function FinalCTA({ isAuthenticated, appName, colors }: any) {
+interface FinalCTAProps {
+  isAuthenticated: boolean
+  appName: string
+  colors: any
+}
+
+function FinalCTA({ isAuthenticated, appName, colors }: FinalCTAProps) {
   return (
     <section className="py-16 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1010,7 +1042,7 @@ function FinalCTA({ isAuthenticated, appName, colors }: any) {
           }}
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
+          viewport={{ once: true, amount: 0.3 }}
           transition={{ duration: 0.6 }}
         >
           {/* Animated Background Shapes */}
@@ -1041,11 +1073,11 @@ function FinalCTA({ isAuthenticated, appName, colors }: any) {
               whileInView={{ scale: 1 }}
               viewport={{ once: true }}
               transition={{ type: 'spring', stiffness: 200 }}
-              className="cursor-pointer inline-block"
             >
               <motion.div
                 className="inline-block text-6xl mb-6"
                 whileHover={{ scale: 1.2, rotate: [0, -10, 10, 0] }}
+                transition={{ duration: 0.5 }}
               >
                 🎉
               </motion.div>
@@ -1067,7 +1099,6 @@ function FinalCTA({ isAuthenticated, appName, colors }: any) {
               flipDirection="right"
               flipBackText={isAuthenticated ? "C'est parti ! 🚀" : 'Inscrivez-vous 🎊'}
               shadow="xl"
-              className="min-w-[280px] cursor-pointer"
             >
               {isAuthenticated ? 'Découvrir les événements' : 'Commencer gratuitement'}
             </Button>

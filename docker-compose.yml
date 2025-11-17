@@ -1,5 +1,5 @@
 # ============================================
-# Docker Compose - Production Ready
+# Docker Compose - Production Ready with Nginx
 # ============================================
 
 services:
@@ -17,7 +17,7 @@ services:
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "${DB_PORT:-3306}:3306"
+      - "${DB_PORT:-3307}:3306"  # Changed: MySQL runs on 3306 internally, exposed as 3307
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
@@ -36,7 +36,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.typesense
-    image: g-agency-typesense:custom
+    image: g-agency-typesense
     restart: unless-stopped
     container_name: g-agency-typesense
     env_file: .env.docker
@@ -44,7 +44,7 @@ services:
       TYPESENSE_DATA_DIR: /data
       TYPESENSE_API_KEY: ${TYPESENSE_API_KEY}
     ports:
-      - "${TYPESENSE_PORT:-8108}:8108"
+      - "${TYPESENSE_PORT:-8109}:8108"  # Changed: Typesense runs on 8108 internally, exposed as 8109
     volumes:
       - typesense_data:/data
     networks:
@@ -75,10 +75,10 @@ services:
     environment:
       # Core settings
       NODE_ENV: production
-      PORT: 10000
+      PORT: 3333
       HOST: 0.0.0.0
       APP_KEY: ${APP_KEY}
-      APP_URL: ${APP_URL:-http://localhost:3333}
+      APP_URL: ${APP_URL:-http://localhost:8080}
       
       # Database
       DB_HOST: db
@@ -111,8 +111,9 @@ services:
       
       # Logging
       LOG_LEVEL: ${LOG_LEVEL:-info}
-    ports:
-      - "${PORT:-3333}:10000"
+    # No external port exposure - only accessible via Nginx
+    expose:
+      - "3333"
     volumes:
       - ./public/uploads:/app/public/uploads
       - ./logs:/app/logs
@@ -125,7 +126,7 @@ services:
       typesense:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:10000/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:3333/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -136,6 +137,33 @@ services:
           memory: 1G
         reservations:
           memory: 512M
+
+  # ============================================
+  # Nginx Reverse Proxy
+  # ============================================
+  nginx:
+    image: nginx:alpine
+    container_name: g-agency-nginx
+    restart: unless-stopped
+    ports:
+      - "${NGINX_PORT:-8080}:80"  # Nginx exposed on port 8080 (configurable)
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./public/uploads:/app/public/uploads:ro  # Serve static uploads
+      - nginx_cache:/var/cache/nginx
+      - nginx_logs:/var/log/nginx
+    networks:
+      - app-network
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 # ============================================
 # Networks
@@ -155,3 +183,7 @@ volumes:
     name: g-agency-typesense-data
   app_tmp:
     name: g-agency-app-tmp
+  nginx_cache:
+    name: g-agency-nginx-cache
+  nginx_logs:
+    name: g-agency-nginx-logs

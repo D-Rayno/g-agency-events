@@ -7,7 +7,7 @@
   "branding": {
     "logo": {
       "text": "G-Agency Events",
-      "icon": "🎪",
+      "icon": "g-agency",
       "url": "/"
     },
     "favicon": "/favicon.ico"
@@ -15,7 +15,7 @@
   "images": {
     "banner": {
       "default": "/images/banner-default.jpg",
-      "home": "/images/banner-default.jpg",
+      "home": "/images/banner-home.webp",
       "events": "/images/banner-default.jpg",
       "auth": "/images/banner-default.jpg"
     },

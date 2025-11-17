@@ -13,6 +13,7 @@ dist
 .env
 .env.local
 .env.*.local
+!.env.docker.example
 # REMOVED: .env.docker
 
 # IDE

@@ -15,12 +15,13 @@ import {
 import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react'
 import Button from '~/components/ui/Button'
 import Avatar from '~/components/ui/Avatar'
+import Logo from '~/components/ui/Logo'
 import { useAuthStore } from '~/stores/auth'
 import { useTheme } from '~/hooks/useTheme'
 
 export default function Header() {
   const { props } = usePage()
-  const { config, colors, getAnimation } = useTheme()
+  const { colors, getAnimation } = useTheme()
 
   // Scroll-based effects
   const { scrollY } = useScroll()
@@ -120,45 +121,17 @@ export default function Header() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link
+          {/* Logo - Using Logo Component */}
+          <Logo
+            variant="dark"
+            size="md"
+            showText={true}
+            clickable={true}
             href={isAuthenticated ? '/events' : '/'}
-            className="flex items-center gap-3 group cursor-pointer"
-          >
-            <motion.div
-              className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition-all duration-300"
-              style={{
-                background: `linear-gradient(135deg, ${colors.primary[500]}, ${colors.secondary[500]})`,
-              }}
-              whileHover={{
-                scale: 1.1,
-                rotate: [0, -10, 10, 0],
-                boxShadow: `0 15px 35px -5px ${colors.primary[500]}80`,
-              }}
-              whileTap={{ scale: 0.95 }}
-              transition={{ duration: 0.3 }}
-            >
-              <motion.span
-                className="text-2xl"
-                animate={{ rotate: [0, 5, -5, 0] }}
-                transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-              >
-                {config.branding.logo.icon}
-              </motion.span>
-            </motion.div>
-            <motion.span
-              className="text-xl font-bold hidden sm:inline bg-clip-text text-transparent cursor-pointer"
-              style={{
-                backgroundImage: `linear-gradient(90deg, ${colors.primary[600]}, ${colors.secondary[600]})`,
-              }}
-              whileHover={{
-                backgroundImage: `linear-gradient(90deg, ${colors.primary[700]}, ${colors.secondary[700]})`,
-                scale: 1.02,
-              }}
-            >
-              {config.branding.logo.text}
-            </motion.span>
-          </Link>
+            animate={true}
+            width={40}
+            height={40}
+          />
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-2">

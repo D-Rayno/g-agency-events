@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react'
+import Logo from '~/components/ui/Logo'
 import { useTheme } from '~/hooks/useTheme'
 
 export default function Footer() {
@@ -9,14 +10,17 @@ export default function Footer() {
     <footer className="bg-neutral-900 text-neutral-300 border-t border-neutral-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-          {/* Brand */}
+          {/* Brand - Using Logo Component */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
-                <span className="text-xl font-bold text-white">{config.branding.logo.icon}</span>
-              </div>
-              <span className="text-lg font-bold text-white">{config.branding.logo.text}</span>
-            </div>
+            <Logo
+              variant="light"
+              size="md"
+              showText={true}
+              clickable={true}
+              animate={true}
+              width={40}
+              height={40}
+            />
             <p className="text-sm text-neutral-400">{config.app.description}</p>
           </div>
 

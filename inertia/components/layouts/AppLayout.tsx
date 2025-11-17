@@ -16,7 +16,7 @@ export default function AppLayout({
   children,
   showHeader = true,
   showFooter = true,
-  containerClass = 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8',
+  containerClass = 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8',
   layout = 'default',
 }: AppLayoutProps) {
   const { scrollYProgress } = useScroll()
