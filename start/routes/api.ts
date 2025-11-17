@@ -8,7 +8,6 @@ const AdminRegistrationController = () => import('#controllers/api/admin/registr
 const AdminUserController = () => import('#controllers/api/admin/users_controller')
 const ExportController = () => import('#controllers/api/admin/export_controller')
 const BulkController = () => import('#controllers/api/admin/bulk_controller')
-const AnalyticsController = () => import('#controllers/api/admin/analytics_controller')
 
 export default () => {
   router
@@ -72,12 +71,6 @@ export default () => {
           router.post('/bulk/registrations/cancel', [BulkController, 'cancelRegistrations'])
           router.delete('/bulk/registrations', [BulkController, 'deleteRegistrations'])
 
-          // ---- Analytics & Dashboard ----
-          router.get('/analytics/dashboard', [AnalyticsController, 'dashboard'])
-          router.get('/analytics/registrations-chart', [AnalyticsController, 'registrationsChart'])
-          router.get('/analytics/revenue-chart', [AnalyticsController, 'revenueChart'])
-          router.get('/analytics/events-by-province', [AnalyticsController, 'eventsByProvince'])
-          router.get('/analytics/user-engagement', [AnalyticsController, 'userEngagement'])
         })
         .middleware(middleware.adminApi())
     })
