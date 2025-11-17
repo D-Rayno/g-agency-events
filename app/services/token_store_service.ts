@@ -1,6 +1,9 @@
+// app/services/token_store_service.ts
 import { DateTime } from 'luxon'
 import { randomBytes } from 'node:crypto'
-
+import app from '@adonisjs/core/services/app'
+import { writeFile, readFile, mkdir } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 
 /**
  * Interface pour stocker les informations du token
@@ -8,202 +11,282 @@ import { randomBytes } from 'node:crypto'
 interface TokenInfo {
   token: string
   refreshToken: string
-  createdAt: DateTime
-  expiresAt: DateTime
+  createdAt: string
+  expiresAt: string
   deviceId?: string
+  deviceName?: string
   userAgent?: string
+  lastUsedAt: string
+}
+
+interface TokenStore {
+  tokens: Record<string, TokenInfo>
+  refreshIndex: Record<string, string>
 }
 
 /**
- * Service pour gérer les tokens admin avec système de refresh
- *
- * IMPORTANT: En production, utilisez Redis ou une base de données
- * pour persister les tokens entre les redémarrages du serveur
+ * Service pour gérer les tokens admin avec stockage fichier persistant
+ * Les tokens survivent aux redémarrages du serveur
  */
 export default class TokenStoreService {
+  private static storePath = app.makePath('storage/tokens/admin_tokens.json')
+  private static store: TokenStore | null = null
+  
   /**
-   * Store en mémoire pour les tokens actifs
-   * Clé: token principal, Valeur: informations du token
+   * Durée de validité d'un token en minutes (défaut: 7 jours)
    */
-  private static activeTokens = new Map<string, TokenInfo>()
+  private static readonly TOKEN_LIFETIME_MINUTES = 7 * 24 * 60 // 7 days
 
   /**
-   * Index inversé pour rechercher un token par son refresh token
-   * Clé: refresh token, Valeur: token principal
+   * Durée de validité d'un refresh token en minutes (défaut: 30 jours)
    */
-  private static refreshTokenIndex = new Map<string, string>()
+  private static readonly REFRESH_TOKEN_LIFETIME_MINUTES = 30 * 24 * 60 // 30 days
 
   /**
-   * Durée de validité d'un token en minutes (défaut: 30 minutes)
+   * Initialise le store depuis le fichier
    */
-  private static readonly TOKEN_LIFETIME_MINUTES = 30
+  private static async initStore(): Promise<void> {
+    if (this.store) return
+
+    try {
+      // Créer le dossier si nécessaire
+      const dir = app.makePath('storage/tokens')
+      if (!existsSync(dir)) {
+        await mkdir(dir, { recursive: true })
+      }
+
+      // Charger le store existant
+      if (existsSync(this.storePath)) {
+        const data = await readFile(this.storePath, 'utf-8')
+        this.store = JSON.parse(data)
+        
+        // Nettoyer les tokens expirés au démarrage
+        await this.cleanupExpiredTokens()
+      } else {
+        this.store = { tokens: {}, refreshIndex: {} }
+        await this.saveStore()
+      }
+    } catch (error) {
+      console.error('[TokenStore] Erreur initialisation:', error)
+      this.store = { tokens: {}, refreshIndex: {} }
+    }
+  }
+
+  /**
+   * Sauvegarde le store dans le fichier
+   */
+  private static async saveStore(): Promise<void> {
+    try {
+      await writeFile(this.storePath, JSON.stringify(this.store, null, 2), 'utf-8')
+    } catch (error) {
+      console.error('[TokenStore] Erreur sauvegarde:', error)
+    }
+  }
 
   /**
    * Génère une nouvelle paire de tokens (access token + refresh token)
-   *
-   * @param deviceId - Identifiant optionnel de l'appareil
-   * @param userAgent - User agent optionnel du navigateur/app
-   * @returns Object contenant le token, refresh token et date d'expiration
    */
-  static generateTokenPair(deviceId?: string, userAgent?: string) {
-    // Générer un token d'accès aléatoire (32 bytes = 64 caractères hex)
-    const accessToken = randomBytes(32).toString('hex')
+  static async generateTokenPair(deviceId?: string, deviceName?: string, userAgent?: string) {
+    await this.initStore()
 
-    // Générer un refresh token aléatoire (plus long pour plus de sécurité)
-    const refreshToken = randomBytes(48).toString('hex')
+    // Générer un token d'accès aléatoire sécurisé
+    const accessToken = randomBytes(48).toString('hex')
+    const refreshToken = randomBytes(64).toString('hex')
 
     const now = DateTime.now()
     const expiresAt = now.plus({ minutes: this.TOKEN_LIFETIME_MINUTES })
+    const refreshExpiresAt = now.plus({ minutes: this.REFRESH_TOKEN_LIFETIME_MINUTES })
 
-    // Stocker les informations du token
     const tokenInfo: TokenInfo = {
       token: accessToken,
       refreshToken,
-      createdAt: now,
-      expiresAt,
+      createdAt: now.toISO()!,
+      expiresAt: expiresAt.toISO()!,
       deviceId,
+      deviceName,
       userAgent,
+      lastUsedAt: now.toISO()!,
     }
 
-    // Sauvegarder dans les deux maps pour permettre la recherche bidirectionnelle
-    this.activeTokens.set(accessToken, tokenInfo)
-    this.refreshTokenIndex.set(refreshToken, accessToken)
+    // Sauvegarder dans le store
+    this.store!.tokens[accessToken] = tokenInfo
+    this.store!.refreshIndex[refreshToken] = accessToken
 
-    console.log(`[TokenStore] Nouveau token généré, expire à ${expiresAt.toISO()}`)
+    await this.saveStore()
+
+    console.log(`[TokenStore] Nouveau token généré pour ${deviceName || deviceId || 'unknown'}`)
 
     return {
       accessToken,
       refreshToken,
       expiresAt: expiresAt.toISO(),
-      expiresIn: this.TOKEN_LIFETIME_MINUTES * 60, // en secondes
+      expiresIn: this.TOKEN_LIFETIME_MINUTES * 60,
+      refreshExpiresAt: refreshExpiresAt.toISO(),
     }
   }
 
   /**
-   * Vérifie si un token est valide (existe et n'est pas expiré)
-   *
-   * @param token - Le token d'accès à vérifier
-   * @returns true si le token est valide, false sinon
+   * Vérifie si un token est valide
    */
-  static isTokenValid(token: string): boolean {
-    const tokenInfo = this.activeTokens.get(token)
+  static async isTokenValid(token: string): Promise<boolean> {
+    await this.initStore()
+    
+    const tokenInfo = this.store!.tokens[token]
+    if (!tokenInfo) return false
 
-    // Token n'existe pas
-    if (!tokenInfo) {
+    const expiresAt = DateTime.fromISO(tokenInfo.expiresAt)
+    if (DateTime.now() > expiresAt) {
       return false
     }
 
-    // Token expiré
-    if (DateTime.now() > tokenInfo.expiresAt) {
-      console.log(`[TokenStore] Token expiré détecté: ${token.substring(0, 8)}...`)
-      return false
-    }
+    // Mettre à jour lastUsedAt
+    tokenInfo.lastUsedAt = DateTime.now().toISO()!
+    await this.saveStore()
 
     return true
   }
 
   /**
    * Obtient les informations d'un token
-   *
-   * @param token - Le token d'accès
-   * @returns Les informations du token ou null si inexistant
    */
-  static getTokenInfo(token: string): TokenInfo | null {
-    return this.activeTokens.get(token) || null
+  static async getTokenInfo(token: string): Promise<TokenInfo | null> {
+    await this.initStore()
+    return this.store!.tokens[token] || null
   }
 
   /**
-   * Rafraîchit un token expiré en utilisant le refresh token
-   * Cette méthode révoque l'ancien token et génère une nouvelle paire
-   *
-   * @param refreshToken - Le refresh token reçu du client
-   * @returns Une nouvelle paire de tokens ou null si le refresh token est invalide
+   * Rafraîchit un token expiré
    */
-  static refreshToken(refreshToken: string) {
-    // Trouver le token principal associé à ce refresh token
-    const oldAccessToken = this.refreshTokenIndex.get(refreshToken)
+  static async refreshToken(refreshToken: string) {
+    await this.initStore()
 
+    const oldAccessToken = this.store!.refreshIndex[refreshToken]
     if (!oldAccessToken) {
-      console.log(`[TokenStore] Refresh token invalide ou déjà utilisé`)
+      console.log('[TokenStore] Refresh token invalide')
       return null
     }
 
-    // Récupérer les infos de l'ancien token
-    const oldTokenInfo = this.activeTokens.get(oldAccessToken)
-
+    const oldTokenInfo = this.store!.tokens[oldAccessToken]
     if (!oldTokenInfo) {
-      console.log(`[TokenStore] Token principal introuvable`)
+      console.log('[TokenStore] Token principal introuvable')
       return null
     }
 
-    // Révoquer l'ancien token et son refresh token
-    this.revokeToken(oldAccessToken)
+    // Vérifier si le refresh token n'est pas expiré
+    const refreshExpiresAt = DateTime.fromISO(oldTokenInfo.createdAt).plus({ 
+      minutes: this.REFRESH_TOKEN_LIFETIME_MINUTES 
+    })
+    
+    if (DateTime.now() > refreshExpiresAt) {
+      console.log('[TokenStore] Refresh token expiré')
+      await this.revokeToken(oldAccessToken)
+      return null
+    }
 
-    console.log(`[TokenStore] Token rafraîchi avec succès`)
+    // Révoquer l'ancien token
+    await this.revokeToken(oldAccessToken)
 
-    // Générer une nouvelle paire de tokens en conservant les métadonnées
-    return this.generateTokenPair(oldTokenInfo.deviceId, oldTokenInfo.userAgent)
+    console.log('[TokenStore] Token rafraîchi avec succès')
+
+    // Générer une nouvelle paire
+    return this.generateTokenPair(
+      oldTokenInfo.deviceId,
+      oldTokenInfo.deviceName,
+      oldTokenInfo.userAgent
+    )
   }
 
   /**
-   * Révoque un token (le supprime du store)
-   *
-   * @param token - Le token d'accès à révoquer
+   * Révoque un token
    */
-  static revokeToken(token: string): void {
-    const tokenInfo = this.activeTokens.get(token)
-
+  static async revokeToken(token: string): Promise<void> {
+    await this.initStore()
+    
+    const tokenInfo = this.store!.tokens[token]
     if (tokenInfo) {
-      // Supprimer le refresh token de l'index
-      this.refreshTokenIndex.delete(tokenInfo.refreshToken)
-
-      // Supprimer le token principal
-      this.activeTokens.delete(token)
-
+      delete this.store!.refreshIndex[tokenInfo.refreshToken]
+      delete this.store!.tokens[token]
+      await this.saveStore()
       console.log(`[TokenStore] Token révoqué: ${token.substring(0, 8)}...`)
     }
   }
 
   /**
-   * Révoque tous les tokens (utile pour une déconnexion globale)
+   * Révoque tous les tokens
    */
-  static revokeAllTokens(): void {
-    const count = this.activeTokens.size
-    this.activeTokens.clear()
-    this.refreshTokenIndex.clear()
+  static async revokeAllTokens(): Promise<void> {
+    await this.initStore()
+    
+    const count = Object.keys(this.store!.tokens).length
+    this.store = { tokens: {}, refreshIndex: {} }
+    await this.saveStore()
+    
     console.log(`[TokenStore] ${count} token(s) révoqué(s)`)
   }
 
   /**
-   * Nettoie les tokens expirés (à appeler périodiquement)
-   * En production, utilisez un cron job ou un worker pour cela
+   * Révoque tous les tokens d'un appareil spécifique
    */
-  static cleanupExpiredTokens(): void {
+  static async revokeDeviceTokens(deviceId: string): Promise<void> {
+    await this.initStore()
+    
+    let count = 0
+    for (const [token, info] of Object.entries(this.store!.tokens)) {
+      if (info.deviceId === deviceId) {
+        delete this.store!.refreshIndex[info.refreshToken]
+        delete this.store!.tokens[token]
+        count++
+      }
+    }
+    
+    if (count > 0) {
+      await this.saveStore()
+      console.log(`[TokenStore] ${count} token(s) révoqué(s) pour l'appareil ${deviceId}`)
+    }
+  }
+
+  /**
+   * Nettoie les tokens expirés
+   */
+  static async cleanupExpiredTokens(): Promise<void> {
+    await this.initStore()
+    
     const now = DateTime.now()
     let cleanedCount = 0
 
-    for (const [token, info] of this.activeTokens.entries()) {
-      if (now > info.expiresAt) {
-        this.revokeToken(token)
+    for (const [token, info] of Object.entries(this.store!.tokens)) {
+      const expiresAt = DateTime.fromISO(info.expiresAt)
+      const refreshExpiresAt = DateTime.fromISO(info.createdAt).plus({ 
+        minutes: this.REFRESH_TOKEN_LIFETIME_MINUTES 
+      })
+      
+      // Supprimer si même le refresh token est expiré
+      if (now > refreshExpiresAt) {
+        delete this.store!.refreshIndex[info.refreshToken]
+        delete this.store!.tokens[token]
         cleanedCount++
       }
     }
 
     if (cleanedCount > 0) {
+      await this.saveStore()
       console.log(`[TokenStore] ${cleanedCount} token(s) expiré(s) nettoyé(s)`)
     }
   }
 
   /**
-   * Obtient des statistiques sur les tokens actifs
+   * Obtient des statistiques
    */
-  static getStats() {
+  static async getStats() {
+    await this.initStore()
+    
     const now = DateTime.now()
     let activeCount = 0
     let expiredCount = 0
 
-    for (const info of this.activeTokens.values()) {
-      if (now <= info.expiresAt) {
+    for (const info of Object.values(this.store!.tokens)) {
+      const expiresAt = DateTime.fromISO(info.expiresAt)
+      if (now <= expiresAt) {
         activeCount++
       } else {
         expiredCount++
@@ -211,45 +294,53 @@ export default class TokenStoreService {
     }
 
     return {
-      total: this.activeTokens.size,
+      total: Object.keys(this.store!.tokens).length,
       active: activeCount,
       expired: expiredCount,
       tokenLifetimeMinutes: this.TOKEN_LIFETIME_MINUTES,
+      refreshTokenLifetimeMinutes: this.REFRESH_TOKEN_LIFETIME_MINUTES,
     }
   }
 
   /**
-   * Liste tous les tokens actifs avec leurs métadonnées
-   * Utile pour le debugging ou l'administration
+   * Liste toutes les sessions actives
    */
-  static listActiveSessions() {
+  static async listActiveSessions() {
+    await this.initStore()
+    
     const sessions = []
     const now = DateTime.now()
 
-    for (const [token, info] of this.activeTokens.entries()) {
-      const isExpired = now > info.expiresAt
+    for (const [token, info] of Object.entries(this.store!.tokens)) {
+      const expiresAt = DateTime.fromISO(info.expiresAt)
+      const isExpired = now > expiresAt
+      const lastUsedAt = DateTime.fromISO(info.lastUsedAt)
+
       sessions.push({
         tokenPreview: `${token.substring(0, 8)}...`,
         deviceId: info.deviceId || 'unknown',
+        deviceName: info.deviceName || 'Unknown Device',
         userAgent: info.userAgent || 'unknown',
-        createdAt: info.createdAt.toISO(),
-        expiresAt: info.expiresAt.toISO(),
+        createdAt: info.createdAt,
+        expiresAt: info.expiresAt,
+        lastUsedAt: info.lastUsedAt,
         isExpired,
-        timeRemaining: isExpired ? 0 : info.expiresAt.diff(now, 'minutes').minutes,
+        timeRemaining: isExpired ? 0 : expiresAt.diff(now, 'minutes').minutes,
+        daysSinceLastUse: now.diff(lastUsedAt, 'days').days,
       })
     }
 
-    return sessions
+    // Trier par dernière utilisation
+    return sessions.sort((a, b) => {
+      return new Date(b.lastUsedAt).getTime() - new Date(a.lastUsedAt).getTime()
+    })
   }
 }
 
-/**
- * Nettoyer les tokens expirés toutes les 10 minutes
- * En production, utilisez un système de tâches planifiées (cron)
- */
+// Nettoyer les tokens expirés toutes les 6 heures
 setInterval(
   () => {
     TokenStoreService.cleanupExpiredTokens()
   },
-  10 * 60 * 1000
-) // 10 minutes
+  6 * 60 * 60 * 1000
+)

@@ -1,53 +1,77 @@
+// app/controllers/api/admin/auth_controller.ts
 import type { HttpContext } from '@adonisjs/core/http'
 import env from '#start/env'
 import TokenStoreService from '#services/token_store_service'
+import { loginValidator } from '#validators/admin_login'
 
 export default class AuthController {
   /**
-   * Authentification initiale via le token admin statique
-   * 
-   * Cette route vérifie le token statique défini dans .env et génère
-   * une paire de tokens dynamiques (access + refresh) pour la session
+   * Authentification avec le token statique + informations de l'appareil
    * 
    * POST /api/admin/auth/login
-   * Body: { token: "votre_token_admin_statique" }
+   * Body: { 
+   *   token: "votre_token_admin_statique",
+   *   deviceId: "unique_device_identifier",
+   *   deviceName: "iPhone 14 Pro",
+   *   deviceInfo: { os: "iOS", version: "17.0" }
+   * }
    */
   async login({ request, response }: HttpContext) {
-    const { token } = request.only(['token'])
+    try {
+      const data = await request.validateUsing(loginValidator)
 
-    // Vérifier que le token statique fourni correspond à celui dans .env
-    if (!token || token !== env.get('ADMIN_API_TOKEN')) {
-      return response.unauthorized({
-        error: 'Token invalide',
-        message: 'Le token fourni est incorrect.',
+      // Vérifier le token statique
+      if (data.token !== env.get('ADMIN_API_TOKEN')) {
+        return response.unauthorized({
+          error: 'Token invalide',
+          message: 'Le token fourni est incorrect.',
+        })
+      }
+
+      // Récupérer les métadonnées de l'appareil
+      const deviceId = data.deviceId || request.header('X-Device-Id')
+      const deviceName = data.deviceName || 'Unknown Device'
+      const userAgent = request.header('User-Agent')
+
+      if (!deviceId) {
+        return response.badRequest({
+          error: 'Device ID manquant',
+          message: 'Un identifiant unique de l\'appareil est requis pour la sécurité.',
+        })
+      }
+
+      // Générer une nouvelle paire de tokens
+      const tokenPair = await TokenStoreService.generateTokenPair(
+        deviceId,
+        deviceName,
+        userAgent
+      )
+
+      return response.ok({
+        success: true,
+        message: 'Authentification réussie',
+        data: {
+          accessToken: tokenPair.accessToken,
+          refreshToken: tokenPair.refreshToken,
+          expiresAt: tokenPair.expiresAt,
+          expiresIn: tokenPair.expiresIn,
+          refreshExpiresAt: tokenPair.refreshExpiresAt,
+          tokenType: 'Bearer',
+          deviceId,
+          deviceName,
+        },
+      })
+    } catch (error) {
+      console.error('Login error:', error)
+      return response.badRequest({
+        error: 'Validation error',
+        message: error.messages || 'Les données fournies sont invalides.',
       })
     }
-
-    // Récupérer les métadonnées de l'appareil pour le tracking
-    const deviceId = request.header('X-Device-Id')
-    const userAgent = request.header('User-Agent')
-
-    // Générer une nouvelle paire de tokens (access + refresh)
-    const tokenPair = TokenStoreService.generateTokenPair(deviceId, userAgent)
-
-    return response.ok({
-      success: true,
-      message: 'Authentification réussie',
-      data: {
-        accessToken: tokenPair.accessToken,
-        refreshToken: tokenPair.refreshToken,
-        expiresAt: tokenPair.expiresAt,
-        expiresIn: tokenPair.expiresIn,
-        tokenType: 'Bearer',
-      },
-    })
   }
 
   /**
    * Rafraîchir un token expiré
-   * 
-   * Cette route permet de renouveler un token d'accès expiré en utilisant
-   * le refresh token. L'ancien token est révoqué et une nouvelle paire est générée.
    * 
    * POST /api/admin/auth/refresh
    * Body: { refreshToken: "votre_refresh_token" }
@@ -62,13 +86,12 @@ export default class AuthController {
       })
     }
 
-    // Tenter de rafraîchir le token
-    const newTokenPair = TokenStoreService.refreshToken(refreshToken)
+    const newTokenPair = await TokenStoreService.refreshToken(refreshToken)
 
     if (!newTokenPair) {
       return response.unauthorized({
         error: 'Refresh token invalide',
-        message: 'Le refresh token est invalide ou a déjà été utilisé. Veuillez vous reconnecter.',
+        message: 'Le refresh token est invalide, expiré ou déjà utilisé. Veuillez vous reconnecter.',
       })
     }
 
@@ -80,22 +103,18 @@ export default class AuthController {
         refreshToken: newTokenPair.refreshToken,
         expiresAt: newTokenPair.expiresAt,
         expiresIn: newTokenPair.expiresIn,
+        refreshExpiresAt: newTokenPair.refreshExpiresAt,
         tokenType: 'Bearer',
       },
     })
   }
 
   /**
-   * Vérifier le statut d'authentification du token actuel
-   * 
-   * Cette route vérifie si le token fourni est encore valide.
-   * Elle est protégée par le middleware adminApi.
+   * Vérifier le statut d'authentification
    * 
    * GET /api/admin/auth/check
-   * Header: Authorization: Bearer votre_access_token
    */
   async check({ request, response }: HttpContext) {
-    // Le token a déjà été vérifié par le middleware
     const token = request.header('Authorization')?.replace('Bearer ', '')
 
     if (!token) {
@@ -105,8 +124,7 @@ export default class AuthController {
       })
     }
 
-    // Récupérer les informations du token
-    const tokenInfo = TokenStoreService.getTokenInfo(token)
+    const tokenInfo = await TokenStoreService.getTokenInfo(token)
 
     if (!tokenInfo) {
       return response.unauthorized({
@@ -119,27 +137,25 @@ export default class AuthController {
       authenticated: true,
       message: 'Token valide',
       data: {
-        expiresAt: tokenInfo.expiresAt.toISO(),
+        expiresAt: tokenInfo.expiresAt,
         deviceId: tokenInfo.deviceId,
-        createdAt: tokenInfo.createdAt.toISO(),
+        deviceName: tokenInfo.deviceName,
+        createdAt: tokenInfo.createdAt,
+        lastUsedAt: tokenInfo.lastUsedAt,
       },
     })
   }
 
   /**
-   * Déconnexion (révocation du token)
-   * 
-   * Cette route révoque le token d'accès actuel, forçant l'utilisateur
-   * à se reconnecter avec le token statique.
+   * Déconnexion (révocation du token actuel)
    * 
    * POST /api/admin/auth/logout
-   * Header: Authorization: Bearer votre_access_token
    */
   async logout({ request, response }: HttpContext) {
     const token = request.header('Authorization')?.replace('Bearer ', '')
 
     if (token) {
-      TokenStoreService.revokeToken(token)
+      await TokenStoreService.revokeToken(token)
     }
 
     return response.ok({
@@ -149,16 +165,50 @@ export default class AuthController {
   }
 
   /**
-   * Obtenir des statistiques sur les tokens actifs
+   * Déconnexion de tous les appareils
    * 
-   * Cette route retourne des informations sur le nombre de sessions actives,
-   * expirées, etc. Utile pour le monitoring.
+   * POST /api/admin/auth/logout-all
+   */
+  async logoutAll({ response }: HttpContext) {
+    await TokenStoreService.revokeAllTokens()
+
+    return response.ok({
+      success: true,
+      message: 'Tous les appareils ont été déconnectés',
+    })
+  }
+
+  /**
+   * Déconnexion d'un appareil spécifique
+   * 
+   * POST /api/admin/auth/logout-device
+   * Body: { deviceId: "device_id" }
+   */
+  async logoutDevice({ request, response }: HttpContext) {
+    const { deviceId } = request.only(['deviceId'])
+
+    if (!deviceId) {
+      return response.badRequest({
+        error: 'Device ID manquant',
+        message: 'L\'identifiant de l\'appareil est requis.',
+      })
+    }
+
+    await TokenStoreService.revokeDeviceTokens(deviceId)
+
+    return response.ok({
+      success: true,
+      message: 'Appareil déconnecté avec succès',
+    })
+  }
+
+  /**
+   * Statistiques des tokens actifs
    * 
    * GET /api/admin/auth/stats
-   * Header: Authorization: Bearer votre_access_token
    */
   async stats({ response }: HttpContext) {
-    const stats = TokenStoreService.getStats()
+    const stats = await TokenStoreService.getStats()
 
     return response.ok({
       success: true,
@@ -167,16 +217,12 @@ export default class AuthController {
   }
 
   /**
-   * Lister toutes les sessions actives
-   * 
-   * Cette route retourne la liste de toutes les sessions avec leurs métadonnées.
-   * Utile pour voir quels appareils sont connectés.
+   * Liste toutes les sessions actives (appareils connectés)
    * 
    * GET /api/admin/auth/sessions
-   * Header: Authorization: Bearer votre_access_token
    */
   async sessions({ response }: HttpContext) {
-    const sessions = TokenStoreService.listActiveSessions()
+    const sessions = await TokenStoreService.listActiveSessions()
 
     return response.ok({
       success: true,
@@ -184,24 +230,6 @@ export default class AuthController {
         count: sessions.length,
         sessions,
       },
-    })
-  }
-
-  /**
-   * Révoquer toutes les sessions (déconnexion globale)
-   * 
-   * Cette route révoque tous les tokens actifs. Utile en cas de compromission
-   * ou pour forcer une reconnexion globale.
-   * 
-   * POST /api/admin/auth/revoke-all
-   * Header: Authorization: Bearer votre_access_token
-   */
-  async revokeAll({ response }: HttpContext) {
-    TokenStoreService.revokeAllTokens()
-
-    return response.ok({
-      success: true,
-      message: 'Toutes les sessions ont été révoquées',
     })
   }
 }
