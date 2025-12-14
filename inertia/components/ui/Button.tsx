@@ -216,12 +216,12 @@ export default function Button(props: ButtonProps) {
       },
       outline: {
         background: 'transparent',
-        color: colors.neutral[300],
-        border: `2px solid ${colors.neutral[300]}`,
+        color: colors.neutral[800],
+        border: `2px solid ${colors.neutral[800]}`,
       },
       ghost: {
         background: 'transparent',
-        color: colors.neutral[700],
+        color: colors.neutral[300],
       },
       danger: {
         background: `linear-gradient(to bottom right, ${colors.error[500]}, ${colors.error[600]}, ${colors.error[700]})`,
@@ -348,11 +348,12 @@ export default function Button(props: ButtonProps) {
           animate={isHovered ? { x: ['0%', '200%'] } : {}}
           transition={{
             duration: 0.8,
-            repeat: isHovered ? Infinity : 0,
-            repeatDelay: 0.5,
+            repeat: isHovered ? 1 : 0,
+            repeatDelay: 1,
           }}
         />
       )}
+
 
       {/* Loading State */}
       {loading ? (

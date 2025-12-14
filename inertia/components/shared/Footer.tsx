@@ -26,16 +26,16 @@ export default function Footer() {
 
           {/* Navigation */}
           <div>
-            <h3 className="font-semibold text-white mb-4">Platform</h3>
+            <h3 className="font-semibold text-white mb-4">Plateforme</h3>
             <ul className="space-y-2 text-sm">
               <li>
                 <Link href="/" className="text-neutral-400 hover:text-white transition-colors">
-                  Home
+                  Accueil
                 </Link>
               </li>
               <li>
                 <Link href="/events" className="text-neutral-400 hover:text-white transition-colors">
-                  Events
+                  Événements
                 </Link>
               </li>
               <li>
@@ -43,12 +43,12 @@ export default function Footer() {
                   href="/registrations"
                   className="text-neutral-400 hover:text-white transition-colors"
                 >
-                  My Registrations
+                  Mes Inscriptions
                 </Link>
               </li>
               <li>
                 <Link href="/profile" className="text-neutral-400 hover:text-white transition-colors">
-                  Profile
+                  Profil
                 </Link>
               </li>
             </ul>
@@ -59,46 +59,41 @@ export default function Footer() {
             <h3 className="font-semibold text-white mb-4">Support</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <a href="#" className="text-neutral-400 hover:text-white transition-colors">
-                  Help
-                </a>
+                <Link href="/support/help-center" className="text-neutral-400 hover:text-white transition-colors">
+                  Centre d'aide
+                </Link>
               </li>
               <li>
-                <a href="#" className="text-neutral-400 hover:text-white transition-colors">
-                  Help Center
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-neutral-400 hover:text-white transition-colors">
+                <Link href="/support/contact" className="text-neutral-400 hover:text-white transition-colors">
                   Contact
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="text-neutral-400 hover:text-white transition-colors">
+                <Link href="/support/faq" className="text-neutral-400 hover:text-white transition-colors">
                   FAQ
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
 
           {/* Legal */}
           <div>
-            <h3 className="font-semibold text-white mb-4">Legal</h3>
+            <h3 className="font-semibold text-white mb-4">Légal</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <a href="#" className="text-neutral-400 hover:text-white transition-colors">
-                  Terms of Use
-                </a>
+                <Link href="/legal/terms-of-use" className="text-neutral-400 hover:text-white transition-colors">
+                  Conditions d'utilisation
+                </Link>
               </li>
               <li>
-                <a href="#" className="text-neutral-400 hover:text-white transition-colors">
-                  Privacy Policy
-                </a>
+                <Link href="/legal/privacy-policy" className="text-neutral-400 hover:text-white transition-colors">
+                  Politique de confidentialité
+                </Link>
               </li>
               <li>
-                <a href="#" className="text-neutral-400 hover:text-white transition-colors">
+                <Link href="/legal/cookies" className="text-neutral-400 hover:text-white transition-colors">
                   Cookies
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -109,7 +104,7 @@ export default function Footer() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             {/* Copyright */}
             <p className="text-sm text-neutral-400">
-              &copy; {currentYear} {config.branding.logo.text}. All rights reserved.
+              © {currentYear} {config.branding.logo.text}. Tous droits réservés.
             </p>
 
             {/* Social Links */}

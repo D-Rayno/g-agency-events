@@ -1,0 +1,1626 @@
+=============================================================================
+                    ZEvent Admin API Documentation
+              Comprehensive Guide for React Native Integration
+=============================================================================
+
+VERSION: 1.0.0
+BASE URL: http://localhost:3333/api/admin
+PRODUCTION URL: https://your-domain.com/api/admin
+AUTHENTICATION: Bearer Token (JWT)
+
+=============================================================================
+                      TABLE OF CONTENTS
+=============================================================================
+
+1. AUTHENTICATION SYSTEM
+2. API ENDPOINTS REFERENCE
+3. DATA MODELS & TYPES
+4. ERROR HANDLING
+5. AUTHENTICATION FLOW
+6. BEST PRACTICES
+7. CODE EXAMPLES
+
+=============================================================================
+                    1. AUTHENTICATION SYSTEM
+=============================================================================
+
+OVERVIEW:
+---------
+The API uses a custom token-based authentication system with:
+- Access tokens (short-lived, 24 hours)
+- Refresh tokens (long-lived, 30 days)
+- Device-specific tracking
+- Multi-device support (max 5 devices)
+- FCM token integration for push notifications
+
+AUTHENTICATION REQUIREMENTS:
+----------------------------
+- All protected endpoints require Bearer token in Authorization header
+- Format: `Authorization: Bearer {accessToken}`
+- Single admin password for all login attempts (no user accounts)
+- Device information tracked for security
+
+TOKEN LIFECYCLE:
+----------------
+1. Login with admin password → Get access token + refresh token
+2. Use access token for all API calls
+3. When access token expires → Use refresh token to get new token pair
+4. When refresh token expires → Re-login required
+
+=============================================================================
+                      2. API ENDPOINTS REFERENCE
+=============================================================================
+
+-----------------------------------------------------------------------------
+ AUTHENTICATION ENDPOINTS
+-----------------------------------------------------------------------------
+
+1. LOGIN
+   POST /api/admin/auth/login
+
+   Purpose: Authenticate and get access token
+   Auth Required: NO
+   Rate Limit: Yes
+
+   Request Body:
+   {
+     "password": "your_admin_password",        // Required: Admin password from .env
+     "deviceId": "unique_device_id",           // Required: Unique device identifier
+     "deviceName": "iPhone 14 Pro",            // Optional: Human-readable device name
+     "deviceModel": "iPhone14,3",              // Optional: Device model
+     "osVersion": "17.0",                      // Optional: OS version
+     "appVersion": "1.0.0",                    // Optional: App version
+     "fcmToken": "firebase_token_here"         // Optional: FCM token for push notifications
+   }
+
+   Success Response (200):
+   {
+     "success": true,
+     "message": "Authentification réussie",
+     "data": {
+       "accessToken": "eyJhbGciOiJIUzI1NiIsInR...",
+       "refreshToken": "dGhpc19pc19hX3JlZnJlc2hfdG9rZW4...",
+       "expiresAt": "2024-12-11T15:00:00.000Z",
+       "expiresIn": 86400,
+       "refreshExpiresAt": "2025-01-09T15:00:00.000Z",
+       "tokenType": "Bearer",
+       "device": {
+         "deviceId": "unique_device_id",
+         "deviceName": "iPhone 14 Pro",
+         "deviceModel": "iPhone14,3"
+       }
+     }
+   }
+
+   Error Responses:
+   - 401: Invalid password
+   - 429: Too many devices (max 5 devices allowed)
+   - 400: Validation errors
+
+
+2. REFRESH TOKEN
+   POST /api/admin/auth/refresh
+
+   Purpose: Get new access token using refresh token
+   Auth Required: NO
+   Rate Limit: Yes
+
+   Request Body:
+   {
+     "refreshToken": "your_refresh_token_here"
+   }
+
+   Success Response (200):
+   {
+     "success": true,
+     "message": "Token rafraîchi avec succès",
+     "data": {
+       "accessToken": "new_access_token",
+       "refreshToken": "new_refresh_token",
+       "expiresAt": "2024-12-11T15:00:00.000Z",
+       "expiresIn": 86400,
+       "refreshExpiresAt": "2025-01-09T15:00:00.000Z",
+       "tokenType": "Bearer"
+     }
+   }
+
+   Error Responses:
+   - 401: Invalid or expired refresh token
+   - 400: Missing refresh token
+
+
+3. CHECK AUTHENTICATION STATUS
+   GET /api/admin/auth/check
+
+   Purpose: Verify if current token is valid and get session info
+   Auth Required: YES
+   Rate Limit: Yes
+
+   Success Response (200):
+   {
+     "authenticated": true,
+     "message": "Token valide",
+     "data": {
+       "device": {
+         "deviceId": "unique_device_id",
+         "deviceName": "iPhone 14 Pro",
+         "deviceModel": "iPhone14,3",
+         "osVersion": "17.0",
+         "appVersion": "1.0.0"
+       },
+       "session": {
+         "createdAt": "2024-12-10T15:00:00.000Z",
+         "expiresAt": "2024-12-11T15:00:00.000Z",
+         "lastUsedAt": "2024-12-10T16:30:00.000Z",
+         "loginCount": 5
+       },
+       "security": {
+         "ipAddress": "192.168.1.100",
+         "failedAttempts": 0
+       },
+       "hasFcmToken": true
+     }
+   }
+
+
+4. LOGOUT (Current Device)
+   POST /api/admin/auth/logout
+
+   Purpose: Revoke current access token
+   Auth Required: YES
+   Rate Limit: Yes
+
+   Success Response (200):
+   {
+     "success": true,
+     "message": "Déconnexion réussie"
+   }
+
+
+5. LOGOUT ALL DEVICES
+   POST /api/admin/auth/logout-all
+
+   Purpose: Revoke all tokens from all devices
+   Auth Required: YES
+   Rate Limit: Yes
+
+   Success Response (200):
+   {
+     "success": true,
+     "message": "Tous les appareils ont été déconnectés"
+   }
+
+
+6. LOGOUT SPECIFIC DEVICE
+   POST /api/admin/auth/logout-device
+
+   Purpose: Revoke tokens for a specific device
+   Auth Required: YES
+   Rate Limit: Yes
+
+   Request Body:
+   {
+     "deviceId": "device_id_to_logout"
+   }
+
+   Success Response (200):
+   {
+     "success": true,
+     "message": "Appareil déconnecté avec succès"
+   }
+
+
+7. UPDATE FCM TOKEN
+   POST /api/admin/auth/update-fcm-token
+
+   Purpose: Update Firebase Cloud Messaging token for push notifications
+   Auth Required: YES
+   Rate Limit: Yes
+
+   Request Body:
+   {
+     "fcmToken": "new_firebase_token_here"
+   }
+
+   Success Response (200):
+   {
+     "success": true,
+     "message": "FCM token mis à jour avec succès"
+   }
+
+
+8. GET AUTHENTICATION STATS
+   GET /api/admin/auth/stats
+
+   Purpose: Get token and session statistics
+   Auth Required: YES
+   Rate Limit: Yes
+
+   Success Response (200):
+   {
+     "success": true,
+     "data": {
+       "totalTokens": 5,
+       "activeTokens": 3,
+       "expiredTokens": 2,
+       "revokedTokens": 0
+     }
+   }
+
+
+9. LIST ACTIVE SESSIONS
+   GET /api/admin/auth/sessions
+
+   Purpose: Get list of all active login sessions
+   Auth Required: YES
+   Rate Limit: Yes
+
+   Success Response (200):
+   {
+     "success": true,
+     "data": {
+       "count": 3,
+       "sessions": [
+         {
+           "deviceId": "device1",
+           "deviceName": "iPhone 14 Pro",
+           "lastUsedAt": "2024-12-10T16:00:00.000Z",
+           "createdAt": "2024-12-10T15:00:00.000Z",
+           "ipAddress": "192.168.1.100"
+         }
+       ]
+     }
+   }
+
+
+10. GET SECURITY ALERTS
+    GET /api/admin/auth/security-alerts
+
+    Purpose: Get security-related alerts and suspicious activities
+    Auth Required: YES
+    Rate Limit: Yes
+
+    Success Response (200):
+    {
+      "success": true,
+      "data": {
+        "count": 2,
+        "alerts": [
+          {
+            "type": "failed_login",
+            "message": "Multiple failed login attempts",
+            "timestamp": "2024-12-10T14:00:00.000Z"
+          }
+        ]
+      }
+    }
+
+
+-----------------------------------------------------------------------------
+ EVENT ENDPOINTS
+-----------------------------------------------------------------------------
+
+11. LIST EVENTS (with Search & Filters)
+    GET /api/admin/events
+
+    Purpose: Get paginated list of events with Typesense-powered search
+    Auth Required: YES
+    Rate Limit: Yes
+
+    Query Parameters:
+    - page: number (default: 1)
+    - search: string (searches name, description)
+    - category: string (filter by category)
+    - province: string (filter by province code)
+    - eventType: string (filter by event type: null for normal, or game type)
+    - gameType: string (filter by game type: squid-game, werewolf, escape-room, etc.)
+    - difficulty: string (easy|medium|hard|extreme)
+    - status: string (draft|published|ongoing|finished|cancelled)
+    - is_public: boolean (true|false)
+
+    Example:
+    GET /api/admin/events?page=1&search=gaming&category=Sports&is_public=true
+
+    Success Response (200):
+    {
+      "success": true,
+      "data": [
+        {
+          "id": 1,
+          "name": "Gaming Tournament 2024",
+          "description": "Annual gaming competition",
+          "province": "16",
+          "startDate": "2024-12-25T10:00:00.000Z",
+          "endDate": "2024-12-25T18:00:00.000Z",
+          "category": "Gaming",
+          "imageUrl": "/uploads/events/event1.jpg",
+          "status": "published",
+          "isPublic": true
+        }
+      ],
+      "meta": {
+        "current_page": 1,
+        "last_page": 3,
+        "total": 30,
+        "per_page": 12
+      }
+    }
+
+
+12. GET SINGLE EVENT
+    GET /api/admin/events/:id
+
+    Purpose: Get detailed information about a specific event
+    Auth Required: YES
+    Rate Limit: Yes
+
+    Success Response (200):
+    {
+      "success": true,
+      "data": {
+        "id": 1,
+        "name": "Gaming Tournament 2024",
+        "description": "Annual gaming competition",
+        "location": "Algiers Convention Center",
+        "province": "16",
+        "commune": "Alger Centre",
+        "startDate": "2024-12-25T10:00:00.000Z",
+        "endDate": "2024-12-25T18:00:00.000Z",
+        "capacity": 100,
+        "registeredCount": 45,
+        "minAge": 16,
+        "maxAge": null,
+        "basePrice": 1000,
+        "youthPrice": 500,
+        "seniorPrice": null,
+        "status": "published",
+        "isPublic": true,
+        "requiresApproval": false,
+        "category": "Gaming",
+        "tags": ["gaming", "esports", "tournament"],
+        "registrationStartDate": "2024-12-01T00:00:00.000Z",
+        "registrationEndDate": "2024-12-24T23:59:59.000Z",
+        "isActive": true,
+        "isFeatured": true,
+        "eventType": "game",
+        "gameType": "squid-game",
+        "difficulty": "hard",
+        "durationMinutes": 180,
+        "physicalIntensity": "high",
+        "allowsTeams": true,
+        "teamRegistration": "both",
+        "minTeamSize": 2,
+        "maxTeamSize": 5,
+        "maxTeams": 20,
+        "autoTeamFormation": false,
+        "requiredItems": ["comfortable shoes", "water bottle"],
+        "prohibitedItems": ["phones", "cameras"],
+        "safetyRequirements": ["sign waiver", "medical clearance"],
+        "waiverRequired": true,
+        "rulesDocumentUrl": "/uploads/rules/event1.pdf",
+        "checkInTime": "2024-12-25T09:00:00.000Z",
+        "briefingDurationMinutes": 30,
+        "prizeInformation": "1st: $1000, 2nd: $500, 3rd: $250",
+        "prizePool": 1750,
+        "winnerAnnouncement": "2024-12-25T19:00:00.000Z",
+        "photographyAllowed": true,
+        "liveStreaming": true,
+        "specialInstructions": "Please arrive 30 minutes early",
+        "imageUrl": "/uploads/events/event1.jpg",
+        "createdAt": "2024-11-01T10:00:00.000Z",
+        "updatedAt": "2024-12-01T15:00:00.000Z"
+      }
+    }
+
+
+13. CREATE EVENT
+    POST /api/admin/events
+
+    Purpose: Create a new event
+    Auth Required: YES
+    Rate Limit: Yes
+
+    Request Body (Required fields):
+    {
+      "name": "Event Name",
+      "description": "Event description",
+      "location": "Venue address",
+      "province": "16",
+      "commune": "Alger Centre",
+      "startDate": "2024-12-25T10:00:00.000Z",
+      "endDate": "2024-12-25T18:00:00.000Z",
+      "capacity": 100,
+      "category": "Gaming",
+      "minAge": 13,
+      "basePrice": 1000,
+      "requiresApproval": false
+    }
+
+    Optional fields:
+    - maxAge: number
+    - youthPrice: number
+    - seniorPrice: number
+    - registrationStartDate: ISO date string
+    - registrationEndDate: ISO date string
+    - (all other fields from Event model)
+
+    Success Response (201):
+    {
+      "success": true,
+      "message": "Événement créé avec succès",
+      "data": {
+        "id": 31,
+        "name": "Event Name"
+      }
+    }
+
+
+14. UPDATE EVENT
+    PUT /api/admin/events/:id
+
+    Purpose: Update an existing event
+    Auth Required: YES
+    Rate Limit: Yes
+
+    Request Body (all fields optional):
+    {
+      "name": "Updated Event Name",
+      "description": "Updated description",
+      "capacity": 150,
+      "isActive": true,
+      "isFeatured": true
+    }
+
+    Success Response (200):
+    {
+      "success": true,
+      "message": "Événement mis à jour avec succès",
+      "data": {
+        "id": 1,
+        "name": "Updated Event Name"
+      }
+    }
+
+
+15. DELETE EVENT
+    DELETE /api/admin/events/:id
+
+    Purpose: Delete an event (only if no active registrations)
+    Auth Required: YES
+    Rate Limit: Yes
+
+    Success Response (200):
+    {
+      "success": true,
+      "message": "Événement supprimé avec succès"
+    }
+
+    Error Response (400):
+    {
+      "error": "Suppression impossible",
+      "message": "Cet événement a 5 inscription(s) active(s). Veuillez les gérer avant suppression."
+    }
+
+
+16. GET EVENT STATISTICS
+    GET /api/admin/events/stats
+
+    Purpose: Get overall event statistics
+    Auth Required: YES
+    Rate Limit: Yes
+
+    Success Response (200):
+    {
+      "success": true,
+      "data": {
+        "total": 30,
+        "upcoming": 15,
+        "ongoing": 3,
+        "finished": 12
+      }
+    }
+
+
+-----------------------------------------------------------------------------
+ REGISTRATION ENDPOINTS
+-----------------------------------------------------------------------------
+
+17. LIST REGISTRATIONS
+    GET /api/admin/registrations
+
+    Purpose: Get paginated list of registrations with filters
+    Auth Required: YES
+    Rate Limit: Yes
+
+    Query Parameters:
+    - page: number (default: 1)
+    - limit: number (default: 50)
+    - status: string (pending|confirmed|attended|canceled)
+    - event_id: number
+    - user_id: number
+    - search: string (search user name or email)
+
+    Success Response (200):
+    {
+      "success": true,
+      "data": [
+        {
+          "id": 1,
+          "userId": 5,
+          "eventId": 10,
+          "status": "confirmed",
+          "qrCode": "REG-ABC123DEF456",
+          "price": 1000,
+          "attendedAt": null,
+          "createdAt": "2024-12-01T10:00:00.000Z",
+          "user": {
+            "id": 5,
+            "firstName": "John",
+            "lastName": "Doe",
+            "email": "john@example.com"
+          },
+          "event": {
+            "id": 10,
+            "name": "Gaming Tournament",
+            "startDate": "2024-12-25T10:00:00.000Z"
+          }
+        }
+      ],
+      "meta": {
+        "current_page": 1,
+        "last_page": 6,
+        "total": 289,
+        "per_page": 50
+      }
+    }
+
+
+18. GET SINGLE REGISTRATION
+    GET /api/admin/registrations/:id
+
+    Purpose: Get detailed information about a registration
+    Auth Required: YES
+    Rate Limit: Yes
+
+    Success Response: Similar to list item with full details
+
+
+19. VERIFY QR CODE
+    POST /api/admin/registrations/verify
+
+    Purpose: Verify a registration QR code validity
+    Auth Required: YES
+    Rate Limit: Yes
+
+    Request Body:
+    {
+      "qrCode": "REG-ABC123DEF456"
+    }
+
+    Success Response (200):
+    {
+      "success": true,
+      "valid": true,
+      "data": {
+        "registrationId": 1,
+        "status": "confirmed",
+        "user": {
+          "firstName": "John",
+          "lastName": "Doe"
+        },
+        "event": {
+          "name": "Gaming Tournament",
+          "startDate": "2024-12-25T10:00:00.000Z"
+        }
+      }
+    }
+
+
+20. CONFIRM ATTENDANCE (Mark as Attended)
+    POST /api/admin/registrations/confirm
+
+    Purpose: Mark a registration as attended via QR code scan
+    Auth Required: YES
+    Rate Limit: Yes
+
+    Request Body:
+    {
+      "qrCode": "REG-ABC123DEF456"
+    }
+
+    Success Response (200):
+    {
+      "success": true,
+      "message": "Présence confirmée",
+      "data": {
+        "registrationId": 1,
+        "attendedAt": "2024-12-25T10:15:00.000Z"
+      }
+    }
+
+
+21. CANCEL REGISTRATION
+    DELETE /api/admin/registrations/:id
+
+    Purpose: Cancel a registration
+    Auth Required: YES
+    Rate Limit: Yes
+
+    Success Response (200):
+    {
+      "success": true,
+      "message": "Inscription annulée avec succès"
+    }
+
+
+22. GET REGISTRATION STATISTICS
+    GET /api/admin/registrations/stats
+
+    Purpose: Get overall registration statistics
+    Auth Required: YES
+    Rate Limit: Yes
+
+    Success Response (200):
+    {
+      "success": true,
+      "data": {
+        "total": 289,
+        "pending": 19,
+        "confirmed": 221,
+        "attended": 32,
+        "canceled": 17
+      }
+    }
+
+
+-----------------------------------------------------------------------------
+ USER ENDPOINTS
+-----------------------------------------------------------------------------
+
+23. LIST USERS
+    GET /api/admin/users
+
+    Purpose: Get paginated list of users
+    Auth Required: YES
+    Rate Limit: Yes
+
+    Query Parameters:
+    - page: number (default: 1)
+    - limit: number (default: 50)
+    - search: string (search name or email)
+    - province: string
+    - is_active: boolean
+    - is_blocked: boolean
+
+    Success Response (200):
+    {
+      "success": true,
+      "data": [
+        {
+          "id": 1,
+          "firstName": "John",
+          "lastName": "Doe",
+          "email": "john@example.com",
+          "age": 25,
+          "province": "16",
+          "commune": "Alger Centre",
+          "phoneNumber": "+213555123456",
+          "avatarUrl": "/uploads/avatars/user1.jpg",
+          "isEmailVerified": true,
+          "isActive": true,
+          "isBlocked": false,
+          "isAdmin": false,
+          "createdAt": "2024-01-15T10:00:00.000Z"
+        }
+      ],
+      "meta": {
+        "current_page": 1,
+        "last_page": 3,
+        "total": 101,
+        "per_page": 50
+      }
+    }
+
+
+24. GET SINGLE USER
+    GET /api/admin/users/:id
+
+    Purpose: Get detailed user information
+    Auth Required: YES
+    Rate Limit: Yes
+
+    Success Response: Same as list item with registrations included
+
+
+25. TOGGLE USER BLOCK STATUS
+    PATCH /api/admin/users/:id/toggle-block
+
+    Purpose: Block or unblock a user
+    Auth Required: YES
+    Rate Limit: Yes
+
+    Success Response (200):
+    {
+      "success": true,
+      "message": "Utilisateur bloqué/débloqué",
+      "data": {
+        "isBlocked": true
+      }
+    }
+
+
+26. TOGGLE USER ACTIVE STATUS
+    PATCH /api/admin/users/:id/toggle-active
+
+    Purpose: Activate or deactivate a user account
+    Auth Required: YES
+    Rate Limit: Yes
+
+    Success Response (200):
+    {
+      "success": true,
+      "message": "Statut mis à jour",
+      "data": {
+        "isActive": false
+      }
+    }
+
+
+27. DELETE USER
+    DELETE /api/admin/users/:id
+
+    Purpose: Permanently delete a user
+    Auth Required: YES
+    Rate Limit: Yes
+
+    Success Response (200):
+    {
+      "success": true,
+      "message": "Utilisateur supprimé"
+    }
+
+
+28. GET USER STATISTICS
+    GET /api/admin/users/stats
+
+    Purpose: Get overall user statistics
+    Auth Required: YES
+    Rate Limit: Yes
+
+    Success Response (200):
+    {
+      "success": true,
+      "data": {
+        "total": 101,
+        "active": 95,
+        "blocked": 3,
+        "admins": 1,
+        "verified": 98
+      }
+    }
+
+
+-----------------------------------------------------------------------------
+ EXPORT ENDPOINTS
+-----------------------------------------------------------------------------
+
+29-34. EXPORT DATA
+    GET /api/admin/exports/events/csv
+    GET /api/admin/exports/events/excel
+    GET /api/admin/exports/users/csv
+    GET /api/admin/exports/users/excel
+    GET /api/admin/exports/registrations/csv
+    GET /api/admin/exports/registrations/excel
+
+    Purpose: Export data as CSV or Excel files
+    Auth Required: YES
+    Rate Limit: Yes
+
+    Success Response: File download
+
+
+-----------------------------------------------------------------------------
+ BULK OPERATIONS
+-----------------------------------------------------------------------------
+
+35. BULK UPDATE EVENTS
+    PUT /api/admin/bulk/events
+
+    Purpose: Update multiple events at once
+    Auth Required: YES
+
+    Request Body:
+    {
+      "ids": [1, 2, 3],
+      "data": {
+        "isActive": false,
+        "status": "cancelled"
+      }
+    }
+
+
+36. BULK DELETE EVENTS
+    DELETE /api/admin/bulk/events
+
+    Request Body:
+    {
+      "ids": [1, 2, 3]
+    }
+
+
+37-40. BULK OPERATIONS FOR USERS AND REGISTRATIONS
+    PUT /api/admin/bulk/users
+    DELETE /api/admin/bulk/users
+    POST /api/admin/bulk/registrations/cancel
+    DELETE /api/admin/bulk/registrations
+
+
+=============================================================================
+                      3. DATA MODELS & TYPES
+=============================================================================
+
+EVENT MODEL:
+-----------
+{
+  id: number
+  name: string
+  description: string
+  imageUrl: string | null
+  location: string
+  province: string                    // Province code (e.g., "16" for Algiers)
+  commune: string
+  startDate: DateTime (ISO string)
+  endDate: DateTime (ISO string)
+  capacity: number
+  registeredCount: number
+  minAge: number
+  maxAge: number | null
+  basePrice: number (in centimes)
+  youthPrice: number | null           // Price for age < 26
+  seniorPrice: number | null          // Price for age >= 60
+  status: 'draft' | 'published' | 'ongoing' | 'finished' | 'cancelled'
+  isPublic: boolean
+  requiresApproval: boolean
+  category: string
+  tags: string[]
+  registrationStartDate: DateTime | null
+  registrationEndDate: DateTime | null
+  isActive: boolean
+  isFeatured: boolean
+
+  // GAME-SPECIFIC FIELDS
+  eventType: string | null            // null for normal, "game" for game events
+  gameType: string | null             // "squid-game", "werewolf", "escape-room"
+  difficulty: 'easy' | 'medium' | 'hard' | 'extreme' | null
+  durationMinutes: number | null
+  physicalIntensity: 'low' | 'medium' | 'high'
+  allowsTeams: boolean
+  teamRegistration: 'individual' | 'team' | 'both'
+  minTeamSize: number | null
+  maxTeamSize: number | null
+  maxTeams: number | null
+  autoTeamFormation: boolean
+  requiredItems: string[] | null
+  prohibitedItems: string[] | null
+  safetyRequirements: string[] | null
+  waiverRequired: boolean
+  rulesDocumentUrl: string | null
+  checkInTime: DateTime | null
+  briefingDurationMinutes: number | null
+  prizeInformation: string | null
+  prizePool: number | null
+  winnerAnnouncement: DateTime | null
+  photographyAllowed: boolean
+  liveStreaming: boolean
+  specialInstructions: string | null
+  createdAt: DateTime
+  updatedAt: DateTime | null
+}
+
+
+USER MODEL:
+----------
+{
+  id: number
+  firstName: string
+  lastName: string
+  email: string
+  age: number
+  province: string
+  commune: string
+  phoneNumber: string | null
+  avatarUrl: string | null
+  isEmailVerified: boolean
+  isActive: boolean
+  isBlocked: boolean
+  isAdmin: boolean
+  createdAt: DateTime
+  updatedAt: DateTime | null
+}
+
+
+REGISTRATION MODEL:
+------------------
+{
+  id: number
+  userId: number
+  eventId: number
+  status: 'pending' | 'confirmed' | 'attended' | 'canceled'
+  qrCode: string                      // Unique QR code for check-in
+  price: number (in centimes)
+  attendedAt: DateTime | null
+  createdAt: DateTime
+  updatedAt: DateTime | null
+}
+
+
+=============================================================================
+                      4 ERROR HANDLING
+=============================================================================
+
+HTTP STATUS CODES:
+-----------------
+200: Success
+201: Created
+204: No Content
+400: Bad Request (validation errors)
+401: Unauthorized (invalid/expired token, wrong password)
+403: Forbidden (insufficient permissions)
+404: Not Found
+429: Too Many Requests (rate limit exceeded)
+500: Internal Server Error
+
+
+ERROR RESPONSE FORMAT:
+---------------------
+{
+  "error": "Error Type",
+  "message": "Human-readable error message",
+  "code": "ERROR_CODE",              // Optional
+  "messages": {...}                  // Optional validation errors
+}
+
+
+COMMON ERROR SCENARIOS:
+----------------------
+1. Invalid/Expired Token:
+   - Status: 401
+   - Action: Try refreshing token, if fails → re-login
+
+2. Rate Limit Exceeded:
+   - Status: 429
+   - Action: Implement exponential backoff
+
+3. Validation Errors:
+   - Status: 400
+   - Response includes field-specific errors in "messages" object
+
+4. Too Many Devices:
+   - Status: 429
+   - Message: "Maximum 5 devices allowed"
+   - Action: User must logout from another device
+
+
+=============================================================================
+                      5. AUTHENTICATION FLOW
+=============================================================================
+
+INITIAL LOGIN FLOW:
+------------------
+1. User enters admin password
+2. App sends POST to /api/admin/auth/login with:
+   - password
+   - deviceId (generate unique ID using device info)
+   - deviceName, model, OS version, app version
+   - Optional: FCM token
+
+3. Backend validates password, creates tokens, returns:
+   - accessToken (expires in 24h)
+   - refreshToken (expires in 30 days)
+   - Expiry timestamps
+
+4. App stores both tokens securely:
+   - Use secure storage (Keychain/Keystore)
+   - Never store in AsyncStorage in plain text
+
+5. For all subsequent API calls:
+   - Include: `Authorization: Bearer {accessToken}`
+
+
+TOKEN REFRESH FLOW:
+------------------
+1. Before accessToken expires or on 401 error:
+   - Send POST to /api/admin/auth/refresh with refreshToken
+
+2. Backend validates refreshToken, returns new token pair
+
+3. Update stored tokens with new values
+
+4. Retry failed request with new accessToken
+
+
+AUTO-REFRESH STRATEGY:
+---------------------
+Option A - Proactive Refresh:
+- Check token expiry before each request
+- If expiring in < 5 minutes, refresh first
+- Then make the actual request
+
+Option B - Reactive Refresh:
+- Make request with current token
+- If 401 error, try refresh
+- Retry original request with new token
+- If refresh fails, redirect to login
+
+
+LOGOUT FLOW:
+-----------
+1. User initiates logout
+2. Send POST to /api/admin/auth/logout
+3. Backend revokes access token
+4. Clear stored tokens from device
+5. Redirect to login screen
+
+
+MULTI-DEVICE MANAGEMENT:
+-----------------------
+- Maximum 5 devices allowed simultaneously
+- Each device has unique deviceId
+- User can view all active sessions via /api/admin/auth/sessions
+- User can logout specific device via /api/admin/auth/logout-device
+- User can logout all devices via /api/admin/auth/logout-all
+
+
+=============================================================================
+                      6. BEST PRACTICES
+=============================================================================
+
+SECURITY:
+--------
+1. NEVER log tokens in production
+2. Store tokens in secure storage (Keychain/Keystore)
+3. Implement certificate pinning for production
+4. Use HTTPS only in production
+5. Validate SSL certificates
+6. Clear tokens on logout
+7. Implement biometric auth as an option
+
+
+API REQUESTS:
+------------
+1. Set reasonable timeouts (30s for most, 60s for uploads/exports)
+2. Implement retry logic with exponential backoff
+3. Use request interceptors for:
+   - Adding auth headers automatically
+   - Token refresh on 401
+   - Error logging
+4. Cancel pending requests on screen unmount
+5. Implement request queueing for offline mode
+
+
+ERROR HANDLING:
+--------------
+1. Always handle network errors gracefully
+2. Show user-friendly error messages in French
+3. Log errors for debugging (use error tracking service)
+4. Implement offline detection
+5. Queue failed requests for retry when online
+
+
+PERFORMANCE:
+-----------
+1. Implement pagination for all list endpoints
+2. Use infinite scroll or load more pattern
+3. Cache responses where appropriate
+4. Implement pull-to-refresh
+5. Show loading states during API calls
+6. Optimize image loading (lazy load, resize)
+
+
+DATA SYNCING:
+------------
+1. Implement optimistic updates for better UX
+2. Use local state management (Redux/Zustand/Context)
+3. Sync data in background when app comes to foreground
+4. Handle conflict resolution (server wins vs client wins)
+
+
+RATE LIMITING:
+-------------
+1. Respect rate limits (implement client-side throttling)
+2. On 429 error, wait before retrying
+3. Implement exponential backoff
+4. Show user feedback during rate limit wait
+
+
+PUSH NOTIFICATIONS:
+------------------
+1. Request FCM token on login
+2. Update FCM token via /api/admin/auth/update-fcm-token
+3. Handle token refresh (FCM tokens can expire)
+4. Update token whenever it changes
+
+
+=============================================================================
+                      7. CODE EXAMPLES
+=============================================================================
+
+TYPESCRIPT TYPES:
+----------------
+
+```typescript
+// API Response Types
+interface ApiResponse<T = any> {
+  success: boolean;
+  message?: string;
+  data?: T;
+  meta?: PaginationMeta;
+  error?: string;
+  code?: string;
+}
+
+interface PaginationMeta {
+  current_page: number;
+  last_page: number;
+  total: number;
+  per_page: number;
+}
+
+// Authentication Types
+interface LoginRequest {
+  password: string;
+  deviceId: string;
+  deviceName?: string;
+  deviceModel?: string;
+  osVersion?: string;
+  appVersion?: string;
+  fcmToken?: string;
+}
+
+interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: string;
+  expiresIn: number;
+  refreshExpiresAt: string;
+  tokenType: 'Bearer';
+  device: {
+    deviceId: string;
+    deviceName?: string;
+    deviceModel?: string;
+  };
+}
+
+interface RefreshTokenRequest {
+  refreshToken: string;
+}
+
+// Data Models
+interface Event {
+  id: number;
+  name: string;
+  description: string;
+  imageUrl: string | null;
+  location: string;
+  province: string;
+  commune: string;
+  startDate: string;  // ISO date string
+  endDate: string;    // ISO date string
+  capacity: number;
+  registeredCount: number;
+  minAge: number;
+  maxAge: number | null;
+  basePrice: number;
+  youthPrice: number | null;
+  seniorPrice: number | null;
+  status: 'draft' | 'published' | 'ongoing' | 'finished' | 'cancelled';
+  isPublic: boolean;
+  requiresApproval: boolean;
+  category: string;
+  tags: string[];
+  registrationStartDate: string | null;
+  registrationEndDate: string | null;
+  isActive: boolean;
+  isFeatured: boolean;
+  eventType: string | null;
+  gameType: string | null;
+  difficulty: 'easy' | 'medium' | 'hard' | 'extreme' | null;
+  durationMinutes: number | null;
+  physicalIntensity: 'low' | 'medium' | 'high';
+  allowsTeams: boolean;
+  teamRegistration: 'individual' | 'team' | 'both';
+  minTeamSize: number | null;
+  maxTeamSize: number | null;
+  maxTeams: number | null;
+  autoTeamFormation: boolean;
+  requiredItems: string[] | null;
+  prohibitedItems: string[] | null;
+  safetyRequirements: string[] | null;
+  waiverRequired: boolean;
+  rulesDocumentUrl: string | null;
+  checkInTime: string | null;
+  briefingDurationMinutes: number | null;
+  prizeInformation: string | null;
+  prizePool: number | null;
+  winnerAnnouncement: string | null;
+  photographyAllowed: boolean;
+  liveStreaming: boolean;
+  specialInstructions: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+interface User {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  age: number;
+  province: string;
+  commune: string;
+  phoneNumber: string | null;
+  avatarUrl: string | null;
+  isEmailVerified: boolean;
+  isActive: boolean;
+  isBlocked: boolean;
+  isAdmin: boolean;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+interface Registration {
+  id: number;
+  userId: number;
+  eventId: number;
+  status: 'pending' | 'confirmed' | 'attended' | 'canceled';
+  qrCode: string;
+  price: number;
+  attendedAt: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+  user?: User;
+  event?: Event;
+}
+```
+
+
+EXAMPLE SERVICE CLASS:
+---------------------
+
+```typescript
+import axios, { AxiosInstance, AxiosError } from 'axios';
+
+class AdminApiService {
+  private api: AxiosInstance;
+  private baseURL = 'http://localhost:3333/api/admin';
+
+  constructor() {
+    this.api = axios.create({
+      baseURL: this.baseURL,
+      timeout: 30000,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    // Request interceptor - Add auth token
+    this.api.interceptors.request.use(
+      async (config) => {
+        const token = await this.getAccessToken();
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+
+    // Response interceptor - Handle token refresh
+    this.api.interceptors.response.use(
+      (response) => response,
+      async (error: AxiosError) => {
+        const originalRequest = error.config;
+
+        if (error.response?.status === 401 && originalRequest) {
+          try {
+            const newToken = await this.refreshAccessToken();
+            if (newToken) {
+              originalRequest.headers.Authorization = `Bearer ${newToken}`;
+              return this.api(originalRequest);
+            }
+          } catch (refreshError) {
+            // Refresh failed, logout user
+            await this.logout();
+            throw refreshError;
+          }
+        }
+
+        return Promise.reject(error);
+      }
+    );
+  }
+
+  // Authentication Methods
+  async login(data: LoginRequest): Promise<LoginResponse> {
+    const response = await this.api.post<ApiResponse<LoginResponse>>(
+      '/auth/login',
+      data
+    );
+    if (response.data.success && response.data.data) {
+      await this.saveTokens(response.data.data);
+      return response.data.data;
+    }
+    throw new Error(response.data.message || 'Login failed');
+  }
+
+  async refreshAccessToken(): Promise<string | null> {
+    const refreshToken = await this.getRefreshToken();
+    if (!refreshToken) return null;
+
+    const response = await this.api.post<ApiResponse<LoginResponse>>(
+      '/auth/refresh',
+      { refreshToken }
+    );
+
+    if (response.data.success && response.data.data) {
+      await this.saveTokens(response.data.data);
+      return response.data.data.accessToken;
+    }
+    return null;
+  }
+
+  async checkAuth(): Promise<boolean> {
+    try {
+      const response = await this.api.get('/auth/check');
+      return response.data.authenticated;
+    } catch {
+      return false;
+    }
+  }
+
+  async logout(): Promise<void> {
+    try {
+      await this.api.post('/auth/logout');
+    } finally {
+      await this.clearTokens();
+    }
+  }
+
+  async updateFcmToken(fcmToken: string): Promise<void> {
+    await this.api.post('/auth/update-fcm-token', { fcmToken });
+  }
+
+  // Event Methods
+  async getEvents(params?: {
+    page?: number;
+    search?: string;
+    category?: string;
+    province?: string;
+    status?: string;
+  }): Promise<{data: Event[]; meta: PaginationMeta}> {
+    const response = await this.api.get<ApiResponse<Event[]>>('/events', {
+      params,
+    });
+    return {
+      data: response.data.data || [],
+      meta: response.data.meta!,
+    };
+  }
+
+  async getEvent(id: number): Promise<Event> {
+    const response = await this.api.get<ApiResponse<Event>>(`/events/${id}`);
+    if (response.data.data) {
+      return response.data.data;
+    }
+    throw new Error('Event not found');
+  }
+
+  async createEvent(data: Partial<Event>): Promise<Event> {
+    const response = await this.api.post<ApiResponse<Event>>('/events', data);
+    if (response.data.data) {
+      return response.data.data;
+    }
+    throw new Error('Failed to create event');
+  }
+
+  async updateEvent(id: number, data: Partial<Event>): Promise<Event> {
+    const response = await this.api.put<ApiResponse<Event>>(
+      `/events/${id}`,
+      data
+    );
+    if (response.data.data) {
+      return response.data.data;
+    }
+    throw new Error('Failed to update event');
+  }
+
+  async deleteEvent(id: number): Promise<void> {
+    await this.api.delete(`/events/${id}`);
+  }
+
+  async getEventStats(): Promise<{
+    total: number;
+    upcoming: number;
+    ongoing: number;
+    finished: number;
+  }> {
+    const response = await this.api.get('/events/stats');
+    return response.data.data;
+  }
+
+  // Registration Methods
+  async getRegistrations(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    event_id?: number;
+  }): Promise<{data: Registration[]; meta: PaginationMeta}> {
+    const response = await this.api.get<ApiResponse<Registration[]>>(
+      '/registrations',
+      { params }
+    );
+    return {
+      data: response.data.data || [],
+      meta: response.data.meta!,
+    };
+  }
+
+  async verifyQRCode(qrCode: string): Promise<any> {
+    const response = await this.api.post('/registrations/verify', { qrCode });
+    return response.data.data;
+  }
+
+  async confirmAttendance(qrCode: string): Promise<void> {
+    await this.api.post('/registrations/confirm', { qrCode });
+  }
+
+  async cancelRegistration(id: number): Promise<void> {
+    await this.api.delete(`/registrations/${id}`);
+  }
+
+  // User Methods
+  async getUsers(params?: {
+    page?: number;
+    search?: string;
+  }): Promise<{data: User[]; meta: PaginationMeta}> {
+    const response = await this.api.get<ApiResponse<User[]>>('/users', {
+      params,
+    });
+    return {
+      data: response.data.data || [],
+      meta: response.data.meta!,
+    };
+  }
+
+  async getUser(id: number): Promise<User> {
+    const response = await this.api.get<ApiResponse<User>>(`/users/${id}`);
+    if (response.data.data) {
+      return response.data.data;
+    }
+    throw new Error('User not found');
+  }
+
+  async toggleUserBlock(id: number): Promise<void> {
+    await this.api.patch(`/users/${id}/toggle-block`);
+  }
+
+  async toggleUserActive(id: number): Promise<void> {
+    await this.api.patch(`/users/${id}/toggle-active`);
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    await this.api.delete(`/users/${id}`);
+  }
+
+  // Token Management (use secure storage in production)
+  private async saveTokens(data: LoginResponse): Promise<void> {
+    // Use SecureStore or Keychain
+    await SecureStore.setItemAsync('accessToken', data.accessToken);
+    await SecureStore.setItemAsync('refreshToken', data.refreshToken);
+    await SecureStore.setItemAsync('expiresAt', data.expiresAt);
+  }
+
+  private async getAccessToken(): Promise<string | null> {
+    return await SecureStore.getItemAsync('accessToken');
+  }
+
+  private async getRefreshToken(): Promise<string | null> {
+    return await SecureStore.getItemAsync('refreshToken');
+  }
+
+  private async clearTokens(): Promise<void> {
+    await SecureStore.deleteItemAsync('accessToken');
+    await SecureStore.deleteItemAsync('refreshToken');
+    await SecureStore.deleteItemAsync('expiresAt');
+  }
+}
+
+export default new AdminApiService();
+```
+
+
+USAGE EXAMPLE: 
+-------------
+
+```typescript
+// Login
+try {
+  const response = await AdminApiService.login({
+    password: 'admin_password',
+    deviceId: await getDeviceId(),
+    deviceName: Device.deviceName,
+    deviceModel: Device.modelName,
+    osVersion: Device.osVersion,
+    appVersion: '1.0.0',
+    fcmToken: await getF CMToken(),
+  });
+
+  console.log('Logged in successfully');
+  // Navigate to home screen
+} catch (error) {
+  console.error('Login failed:', error);
+  // Show error to user
+}
+
+// Fetch events with search
+try {
+  const { data: events, meta } = await AdminApiService.getEvents({
+    page: 1,
+    search: 'gaming',
+    category: 'Sports',
+    status: 'published',
+  });
+
+  console.log(`Found ${meta.total} events`);
+  // Update UI with events
+} catch (error) {
+  console.error('Failed to fetch events:', error);
+}
+
+// Verify QR code
+try {
+  const registration = await AdminApiService.verifyQRCode(scannedQRCode);
+  if (registration.valid) {
+    // Show registration details
+    // Offer to confirm attendance
+  }
+} catch (error) {
+  console.error('Invalid QR code:', error);
+}
+```
+
+
+=============================================================================
+                          END OF DOCUMENTATION
+=============================================================================
+
+NOTES FOR AI AGENT:
+------------------
+1. All timestamps are in ISO 8601 format (UTC timezone)
+2. Prices are stored in centimes (divide by 100 for display)
+3. Province codes follow Algerian administrative division codes
+4. QR codes are auto-generated and unique per registration
+5. Token expiry should be checked before each request
+6. Implement proper error boundaries and loading states
+7. Use TypeScript for type safety
+8. Test token refresh flow thoroughly
+9. Implement offline mode with request queue
+10. Always validate data before sending to API
+
+RECOMMENDED LIBRARIES:
+---------------------
+- axios: HTTP client
+- @react-native-async-storage/async-storage: Token storage (dev)
+- expo-secure-store: Secure token storage (production)
+- react-native-device-info: Device information
+- @react-native-firebase/messaging: Push notifications
+- react-query or swr: Data fetching & caching
+- zustand or redux: State management
+
+FOR QUESTIONS OR CLARIFICATIONS:
+-------------------------------
+Refer to the source code in the backend project:
+- Routes: start/routes/api.ts
+- Controllers: app/controllers/api/admin/*
+- Models: app/models/*
+- Validators: app/validators/*

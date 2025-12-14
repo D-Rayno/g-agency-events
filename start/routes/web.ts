@@ -6,6 +6,8 @@ const AuthController = () => import('#controllers/auth_controller')
 const ProfileController = () => import('#controllers/profiles_controller')
 const EventsController = () => import('#controllers/events_controller')
 const RegistrationsController = () => import('#controllers/registrations_controller')
+const SupportController = () => import('#controllers/support_controller')
+const LegalController = () => import('#controllers/legal_controller')
 
 export default () => {
   /*
@@ -59,6 +61,18 @@ export default () => {
     .prefix('/auth')
     .middleware(middleware.guest())
 
+  /*\n  |--------------------------------------------------------------------------
+  | Public Resend Verification (No auth required)
+  |--------------------------------------------------------------------------
+  | Allows users who didn't receive verification email to request a new one.
+  */
+  router
+    .get('/auth/resend-verification', [AuthController, 'showResendVerification'])
+    .as('resend_verification.show')
+  router
+    .post('/auth/resend-verification-public', [AuthController, 'resendVerificationPublic'])
+    .as('resend_verification.public')
+
   /*
   |--------------------------------------------------------------------------
   | Email Verification (Public)
@@ -66,6 +80,7 @@ export default () => {
   | Email verification link can be opened even by unauthenticated users.
   */
   router.get('/auth/verify-email', [AuthController, 'verifyEmail']).as('verify_email')
+
 
   /*
   |--------------------------------------------------------------------------
@@ -106,6 +121,27 @@ export default () => {
         .as('events.register')
     })
     .middleware(middleware.auth())
+
+  /*
+  |--------------------------------------------------------------------------
+  | Support Routes (Public)
+  |--------------------------------------------------------------------------
+  */
+  router.get('/support/help-center', [SupportController, 'helpCenter']).as('support.help_center')
+  router.get('/support/contact', [SupportController, 'contact']).as('support.contact')
+  router.post('/support/contact', [SupportController, 'sendContact']).as('support.send_contact')
+  router.get('/support/faq', [SupportController, 'faq']).as('support.faq')
+
+  /*
+  |--------------------------------------------------------------------------
+  | Legal Routes (Public)
+  |--------------------------------------------------------------------------
+  */
+  router.get('/legal/terms-of-use', [LegalController, 'termsOfUse']).as('legal.terms_of_use')
+  router
+    .get('/legal/privacy-policy', [LegalController, 'privacyPolicy'])
+    .as('legal.privacy_policy')
+  router.get('/legal/cookies', [LegalController, 'cookies']).as('legal.cookies')
 
   /*
   |--------------------------------------------------------------------------

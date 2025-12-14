@@ -75,7 +75,8 @@ const Logo = ({
 
   // Build the logo path based on variant
   const logoPath = useMemo(() => {
-    const baseIcon = logo.icon
+    // Use 'g-agency' as the base filename (the actual SVG file name)
+    const baseFileName = 'g-agency'
     let suffix = ''
     
     if (variant === 'dark') {
@@ -84,8 +85,9 @@ const Logo = ({
       suffix = '-light'
     }
     
-    return `/logo/${baseIcon}${suffix}.svg`
-  }, [logo.icon, variant])
+    return `/logo/${baseFileName}${suffix}.svg`
+  }, [variant])
+
 
   // Size configurations
   const sizeConfig = {

@@ -1,8 +1,9 @@
 // inertia/components/layouts/AuthLayout.tsx - ENHANCED VERSION
-import { usePage, Link } from '@inertiajs/react'
+import { usePage } from '@inertiajs/react'
 import { motion } from 'motion/react'
 import { useState } from 'react'
 import Alert from '~/components/ui/Alert'
+import Logo from '~/components/ui/Logo'
 import { useTheme } from '~/hooks/useTheme'
 
 interface FlashMessages {
@@ -92,26 +93,16 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
         transition={{ duration: 0.4 }}
       >
         <div className="max-w-7xl mx-auto">
-          <Link href="/" className="inline-flex items-center gap-3 group cursor-pointer">
-            <motion.div
-              className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300"
-              style={{
-                background: `linear-gradient(135deg, ${colors.primary[600]}, ${colors.primary[700]})`,
-              }}
-              initial={{ rotate: -180, scale: 0 }}
-              animate={{ rotate: 0, scale: 1 }}
-              transition={{ type: 'spring', stiffness: 200, delay: 0.1 }}
-              whileHover={{ scale: 1.1, rotate: 360 }}
-            >
-              <span className="text-xl font-bold text-white">{config.branding.logo.icon}</span>
-            </motion.div>
-            <motion.span
-              className="text-xl font-bold text-neutral-900 group-hover:text-primary-600 transition-colors duration-300"
-              whileHover={{ x: 5 }}
-            >
-              {config.branding.logo.text}
-            </motion.span>
-          </Link>
+          <Logo
+            variant="dark"
+            size="md"
+            showText={true}
+            clickable={true}
+            href="/"
+            animate={false}
+            width={40}
+            height={40}
+          />
         </div>
       </motion.header>
 

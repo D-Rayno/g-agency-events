@@ -30,6 +30,26 @@ export default class HttpExceptionHandler extends ExceptionHandler {
    * response to the client
    */
   async handle(error: unknown, ctx: HttpContext) {
+    if (ctx.request.url().startsWith('/api/')) {
+      const err = error as any
+      const status = err.status || 500
+
+      let message = err.message || 'An unexpected error occurred'
+      let errorName = err.name || 'Error'
+
+      // In production, mask 500 errors to prevent leaking sensitive info
+      if (app.inProduction && status >= 500) {
+        message = 'Internal Server Error'
+        errorName = 'InternalServerError'
+      }
+
+      return ctx.response.status(status).json({
+        error: errorName,
+        message: message,
+        errors: err.messages || undefined, // Validation errors
+        code: err.code || undefined,
+      })
+    }
     return super.handle(error, ctx)
   }
 

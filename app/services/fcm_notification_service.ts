@@ -19,16 +19,19 @@ export default class FcmNotificationService {
     if (this.initialized) return
 
     try {
-      // Initialize with service account
-      const serviceAccountJson = await import(env.get('FIREBASE_SERVICE_ACCOUNT_PATH'))
-      const serviceAccount = JSON.parse(serviceAccountJson)
+    const serviceAccountPath = env.get('FIREBASE_SERVICE_ACCOUNT_PATH')
+    
+    // Read file properly
+    const { readFile } = await import('node:fs/promises')
+    const serviceAccountData = await readFile(serviceAccountPath, 'utf-8')
+    const serviceAccount = JSON.parse(serviceAccountData)
 
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-      })
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    })
 
-      this.initialized = true
-      console.log('✅ Firebase Admin SDK initialized successfully')
+    this.initialized = true
+    console.log('✅ Firebase Admin SDK initialized successfully')
     } catch (error) {
       console.error('❌ Firebase Admin SDK initialization failed:', error)
       throw error

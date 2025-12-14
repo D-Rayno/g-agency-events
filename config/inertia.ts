@@ -19,7 +19,7 @@ const inertiaConfig = defineConfig({
 
     // Errors are automatically shared by Inertia
     errors: (ctx) => ctx.session.flashMessages.get('errors'),
-    APP_URL: env.get('APP_URL'),
+    APP_URL: env.get('APP_URL') || '',
   },
 
   /**

@@ -10,14 +10,14 @@ export default class UserController {
    */
   async index({ request, response }: HttpContext) {
     const page = request.input('page', 1)
-    const limit = request.input('limit', 50)
+    const limit = Math.min(request.input('limit', 50), 100) // ✅ Cap at 100
     const search = request.input('search', '').trim()
     const isBlocked = request.input('is_blocked')
     const isVerified = request.input('is_verified')
     const isActive = request.input('is_active')
     const province = request.input('province', '').trim()
 
-    // Try Typesense search first using SearchService
+    // Try Typesense first
     const searchResult = await SearchService.searchUsers({
       search,
       province,
@@ -29,22 +29,25 @@ export default class UserController {
     })
 
     if (searchResult) {
-      // Typesense search successful
       const hits = searchResult.hits || []
       const found = searchResult.found || 0
       const lastPage = Math.ceil(found / limit)
 
-      // Extract user IDs & retrieve from DB with registration counts
       const userIds = hits.map((hit) => Number(hit.document.id))
+
       const dbUsers = userIds.length
         ? await User.query()
-            .whereIn('id', userIds)
-            .withCount('registrations', (q) => {
-              q.whereIn('status', ['confirmed', 'attended'])
-            })
+          .whereIn('id', userIds)
+          .select([
+            'id', 'first_name', 'last_name', 'email', 'age',
+            'province', 'commune', 'phone_number', 'is_email_verified',
+            'is_active', 'is_blocked', 'created_at'
+          ])
+          .withCount('registrations', (q) => {
+            q.whereIn('status', ['confirmed', 'attended'])
+          })
         : []
 
-      // Preserve order as in Typesense
       const userMap = new Map(dbUsers.map((u) => [u.id, u]))
       const orderedUsers = hits.map((hit) => userMap.get(Number(hit.document.id))!).filter(Boolean)
 

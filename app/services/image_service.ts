@@ -18,26 +18,45 @@ export default class ImageService {
     folder: 'events' | 'avatars',
     maxWidth: number = 1200
   ): Promise<string> {
+    // ✅ Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
+    if (!file.type || !allowedTypes.includes(file.type)) {
+      throw new Error(`Invalid file type. Allowed: ${allowedTypes.join(', ')}`)
+    }
+
+    // ✅ Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error('File size must be less than 5MB')
+    }
+
     const fileName = `${cuid()}.webp`
     const filePath = `uploads/${folder}/${fileName}`
     const fullPath = app.makePath(`public/${filePath}`)
 
-    // Read the uploaded file from its temporary location
+    // ✅ Ensure directory exists
+    const dir = app.makePath(`public/uploads/${folder}`)
+    await fs.mkdir(dir, { recursive: true })
+
     const buffer = await fs.readFile(file.tmpPath!)
 
-    // Process image: resize, optimize, and convert to WebP
-    await sharp(buffer)
-      .resize(maxWidth, null, {
-        fit: 'inside',
-        withoutEnlargement: true,
-      })
-      .webp({
-        quality: 85,
-        effort: 6,
-      })
-      .toFile(fullPath)
+    // ✅ Add error handling
+    try {
+      await sharp(buffer)
+        .resize(maxWidth, null, {
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .webp({
+          quality: 85,
+          effort: 6,
+        })
+        .toFile(fullPath)
 
-    return filePath
+      return filePath
+    } catch (error) {
+      console.error('Image processing error:', error)
+      throw new Error('Failed to process image')
+    }
   }
 
   /**

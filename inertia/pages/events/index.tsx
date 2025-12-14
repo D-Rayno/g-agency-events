@@ -57,6 +57,7 @@ interface Filters {
   difficulty?: string
   priceRange?: string
   status?: string
+  page?: number
 }
 
 interface Props {
@@ -151,12 +152,15 @@ export default function EventsIndex({ events, filters, filterStats }: Props) {
   }
 
   const handlePageChange = (page: number) => {
-    const params: Record<string, any> = { ...filters, page }
+    // Create params without the old page number
+    const { page: _oldPage, ...filterParams } = filters
+    const params: Record<string, any> = { ...filterParams, page }
     router.get('/events', params, {
       preserveState: true,
       preserveScroll: false,
     })
   }
+
 
   return (
     <>

@@ -1,7 +1,11 @@
+// app/validators/admin_login.ts
 import vine from '@vinejs/vine'
 
 export const loginValidator = vine.compile(
   vine.object({
+    // Admin password for verification
+    password: vine.string().trim().minLength(8),
+    
     // Required device information
     deviceId: vine.string().trim().minLength(1).maxLength(255),
     deviceName: vine.string().trim().minLength(1).maxLength(255),

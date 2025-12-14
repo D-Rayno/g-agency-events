@@ -185,7 +185,7 @@ export default function Header() {
           <div className="flex items-center gap-3">
             {/* Authenticated User */}
             {isAuthenticated && user ? (
-              <div className="hidden md:flex items-center gap-3" ref={userMenuRef}>
+              <div className="hidden md:flex items-center gap-3 relative" ref={userMenuRef}>
                 <motion.button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                   className="flex items-center gap-3 px-3 py-2 rounded-xl transition-all group cursor-pointer"
@@ -236,7 +236,7 @@ export default function Header() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/20 backdrop-blur-sm"
+                        className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
                         style={{ top: '64px' }}
                         onClick={() => setUserMenuOpen(false)}
                       />
@@ -246,7 +246,7 @@ export default function Header() {
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: -10 }}
                         transition={{ duration: getAnimation('fast') / 1000 }}
-                        className="absolute right-0 top-16 w-64 bg-white rounded-2xl shadow-2xl border overflow-hidden"
+                        className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl border overflow-hidden z-50"
                         style={{ borderColor: colors.neutral[200] }}
                       >
                         {/* User Info Header */}

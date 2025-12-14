@@ -11,6 +11,9 @@ import Registration from '#models/registration'
 import SearchService from '#services/search_service'
 import { createEventValidator } from '#validators/create_event'
 
+import { cuid } from '@adonisjs/core/helpers'
+import app from '@adonisjs/core/services/app'
+
 export default class EventController {
   /**
    * ------------------------------------------------------------
@@ -146,10 +149,10 @@ export default class EventController {
 
     const userRegistration = user
       ? await Registration.query()
-          .where('user_id', user.id)
-          .where('event_id', event.id)
-          .whereIn('status', ['pending', 'confirmed', 'attended'])
-          .first()
+        .where('user_id', user.id)
+        .where('event_id', event.id)
+        .whereIn('status', ['pending', 'confirmed', 'attended'])
+        .first()
       : null
 
     return inertia.render('events/show', {
@@ -181,10 +184,10 @@ export default class EventController {
       },
       registration: userRegistration
         ? {
-            id: userRegistration.id,
-            status: userRegistration.status,
-            createdAt: userRegistration.createdAt.toISO(),
-          }
+          id: userRegistration.id,
+          status: userRegistration.status,
+          createdAt: userRegistration.createdAt.toISO(),
+        }
         : null,
       isRegistered: !!userRegistration,
       userAge: user?.age,
@@ -356,5 +359,50 @@ export default class EventController {
         finished: Number(finished?.$extras.total ?? 0),
       },
     })
+  }
+
+  async uploadImage({ params, request, response }: HttpContext) {
+    const event = await Event.find(params.id)
+
+    if (!event) {
+      return response.notFound({
+        error: 'Événement non trouvé',
+        message: "Cet événement n'existe pas.",
+      })
+    }
+
+    const image = request.file('image', {
+      size: '5mb',
+      extnames: ['jpg', 'jpeg', 'png', 'webp'],
+    })
+
+    if (!image) {
+      return response.badRequest({
+        error: 'Image manquante',
+        message: 'Veuillez fournir une image.',
+      })
+    }
+
+    try {
+      const fileName = `${cuid()}.${image.extname}`
+      await image.move(app.makePath('public/uploads/events'), {
+        name: fileName,
+      })
+
+      event.imageUrl = `/uploads/events/${fileName}`
+      await event.save()
+
+      return response.ok({
+        success: true,
+        message: 'Image téléchargée avec succès',
+        data: { imageUrl: event.imageUrl },
+      })
+    } catch (error) {
+      console.error('Image upload error:', error)
+      return response.internalServerError({
+        error: 'Erreur serveur',
+        message: 'Une erreur est survenue lors du téléchargement.',
+      })
+    }
   }
 }

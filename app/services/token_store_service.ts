@@ -12,36 +12,36 @@ import env from '#start/env'
 interface SecureTokenInfo {
   // Hashed token for storage (never store plain tokens)
   hashedToken: string
-  
+
   // Encrypted refresh token
   encryptedRefreshToken: string
-  
+
   // Device information
   deviceId: string
   deviceName: string
   deviceModel?: string
   osVersion?: string
   appVersion?: string
-  
+
   // FCM token for push notifications
   fcmToken?: string
-  
+
   // Security tracking
   ipAddress: string
   userAgent: string
   deviceFingerprint: string // Unique device identifier
-  
+
   // Timestamps
   createdAt: string
   expiresAt: string
   lastUsedAt: string
   lastIpAddress: string
-  
+
   // Security flags
   isRevoked: boolean
   failedAttempts: number
   lastFailedAttempt?: string
-  
+
   // Session metadata
   loginCount: number
   lastRefreshAt?: string
@@ -71,18 +71,27 @@ interface TokenStore {
 export default class SecureTokenStoreService {
   private static storePath = app.makePath('storage/tokens/secure_tokens.json')
   private static store: TokenStore | null = null
-  
+
   // Security configuration
   private static readonly TOKEN_LIFETIME_MINUTES = 7 * 24 * 60 // 7 days
   private static readonly REFRESH_TOKEN_LIFETIME_MINUTES = 30 * 24 * 60 // 30 days
   private static readonly MAX_FAILED_ATTEMPTS = 5
   private static readonly MAX_DEVICES_PER_IP = 10
   private static readonly ENCRYPTION_ALGORITHM = 'aes-256-gcm'
-  
+
   // Encryption key from environment (must be 32 bytes)
-  private static readonly ENCRYPTION_KEY = Buffer.from(
-    env.get('TOKEN_ENCRYPTION_KEY') || createHash('sha256').update(env.get('APP_KEY')).digest()
-  )
+  private static readonly ENCRYPTION_KEY = (() => {
+    const key = env.get('TOKEN_ENCRYPTION_KEY')
+    if (!key) {
+      throw new Error(
+        'TOKEN_ENCRYPTION_KEY is required. Generate one with: node ace generate:encryption-key'
+      )
+    }
+    if (key.length !== 64) {
+      throw new Error('TOKEN_ENCRYPTION_KEY must be exactly 64 characters (32 bytes hex)')
+    }
+    return Buffer.from(key, 'hex')
+  })()
 
   /**
    * Initialize the token store from persistent storage
@@ -105,7 +114,7 @@ export default class SecureTokenStoreService {
           deviceIndex: parsed.deviceIndex || {},
           ipIndex: parsed.ipIndex || {},
         }
-        
+
         await this.cleanupExpiredTokens()
       } else {
         this.store = {
@@ -161,12 +170,12 @@ export default class SecureTokenStoreService {
   private static encrypt(text: string): string {
     const iv = randomBytes(16)
     const cipher = createCipheriv(this.ENCRYPTION_ALGORITHM, this.ENCRYPTION_KEY, iv)
-    
+
     let encrypted = cipher.update(text, 'utf8', 'hex')
     encrypted += cipher.final('hex')
-    
+
     const authTag = cipher.getAuthTag()
-    
+
     // Return iv:authTag:encrypted
     return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted}`
   }
@@ -179,13 +188,13 @@ export default class SecureTokenStoreService {
     const iv = Buffer.from(parts[0], 'hex')
     const authTag = Buffer.from(parts[1], 'hex')
     const encryptedText = parts[2]
-    
+
     const decipher = createDecipheriv(this.ENCRYPTION_ALGORITHM, this.ENCRYPTION_KEY, iv)
     decipher.setAuthTag(authTag)
-    
+
     let decrypted = decipher.update(encryptedText, 'hex', 'utf8')
     decrypted += decipher.final('utf8')
-    
+
     return decrypted
   }
 
@@ -207,7 +216,7 @@ export default class SecureTokenStoreService {
    */
   private static async checkIpAbuse(ipAddress: string): Promise<boolean> {
     await this.initStore()
-    
+
     const devices = this.store!.ipIndex[ipAddress] || []
     return devices.length >= this.MAX_DEVICES_PER_IP
   }
@@ -225,19 +234,19 @@ export default class SecureTokenStoreService {
       console.warn(`[SecureTokenStore] IP change detected for device ${tokenInfo.deviceId}`)
       return true
     }
-    
+
     // Check if user agent changed significantly
     if (tokenInfo.userAgent !== userAgent) {
       console.warn(`[SecureTokenStore] User agent change detected for device ${tokenInfo.deviceId}`)
       return true
     }
-    
+
     // Check failed attempts
     if (tokenInfo.failedAttempts >= this.MAX_FAILED_ATTEMPTS) {
       console.warn(`[SecureTokenStore] Too many failed attempts for device ${tokenInfo.deviceId}`)
       return true
     }
-    
+
     return false
   }
 
@@ -360,14 +369,14 @@ export default class SecureTokenStoreService {
     if (this.detectSuspiciousActivity(tokenInfo, ipAddress, userAgent)) {
       tokenInfo.failedAttempts++
       tokenInfo.lastFailedAttempt = DateTime.now().toISO()!
-      
+
       if (tokenInfo.failedAttempts >= this.MAX_FAILED_ATTEMPTS) {
         tokenInfo.isRevoked = true
         this.store!.revokedTokens.add(hashedToken)
         await this.saveStore()
         return false
       }
-      
+
       await this.saveStore()
       return false
     }
@@ -386,14 +395,14 @@ export default class SecureTokenStoreService {
    */
   static async getTokenInfo(token: string): Promise<SecureTokenInfo | null> {
     await this.initStore()
-    
+
     const hashedToken = this.hashToken(token)
     const tokenInfo = this.store!.tokens[hashedToken]
-    
+
     if (!tokenInfo || tokenInfo.isRevoked) {
       return null
     }
-    
+
     return tokenInfo
   }
 
@@ -470,14 +479,14 @@ export default class SecureTokenStoreService {
     if (tokenInfo) {
       tokenInfo.isRevoked = true
       this.store!.revokedTokens.add(hashedToken)
-      
+
       // Remove from indexes
-      this.store!.deviceIndex[tokenInfo.deviceId] = 
+      this.store!.deviceIndex[tokenInfo.deviceId] =
         this.store!.deviceIndex[tokenInfo.deviceId]?.filter(t => t !== hashedToken) || []
-      
-      this.store!.ipIndex[tokenInfo.ipAddress] = 
+
+      this.store!.ipIndex[tokenInfo.ipAddress] =
         this.store!.ipIndex[tokenInfo.ipAddress]?.filter(t => t !== hashedToken) || []
-      
+
       await this.saveStore()
       console.log(`[SecureTokenStore] Token revoked: ${hashedToken.substring(0, 8)}...`)
     }
@@ -572,10 +581,10 @@ export default class SecureTokenStoreService {
 
     for (const deviceId of deviceIds) {
       const hashedTokens = this.store!.deviceIndex[deviceId] || []
-      
+
       for (const hashedToken of hashedTokens) {
         const tokenInfo = this.store!.tokens[hashedToken]
-        
+
         if (
           tokenInfo &&
           !tokenInfo.isRevoked &&
@@ -607,14 +616,14 @@ export default class SecureTokenStoreService {
       if (now > refreshExpiresAt) {
         delete this.store!.tokens[hashedToken]
         this.store!.revokedTokens.delete(hashedToken)
-        
+
         // Clean indexes
-        this.store!.deviceIndex[info.deviceId] = 
+        this.store!.deviceIndex[info.deviceId] =
           this.store!.deviceIndex[info.deviceId]?.filter(t => t !== hashedToken) || []
-        
-        this.store!.ipIndex[info.ipAddress] = 
+
+        this.store!.ipIndex[info.ipAddress] =
           this.store!.ipIndex[info.ipAddress]?.filter(t => t !== hashedToken) || []
-        
+
         cleanedCount++
       }
     }
@@ -638,7 +647,7 @@ export default class SecureTokenStoreService {
 
     for (const info of Object.values(this.store!.tokens)) {
       const expiresAt = DateTime.fromISO(info.expiresAt)
-      
+
       if (info.isRevoked) {
         revokedCount++
       } else if (now <= expiresAt) {

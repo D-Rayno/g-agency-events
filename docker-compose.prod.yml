@@ -1,0 +1,245 @@
+# ============================================
+# Docker Compose - Production Environment
+# ============================================
+# Purpose: Production deployment with optimized images
+# Features: No bind mounts, production target, resource limits, no direct port exposure
+# Usage: make prod-up or ./deploy-prod.sh
+# ============================================
+
+services:
+  # ============================================
+  # MySQL Database
+  # ============================================
+  db:
+    image: mysql:8.0
+    container_name: zevent-prod-db
+    restart: always
+    env_file: .env.prod
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    # No external port exposure in production
+    expose:
+      - "3306"
+    volumes:
+      - mysql_prod_data:/var/lib/mysql
+    networks:
+      - prod-network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h localhost -u ${DB_USER} -p${DB_PASSWORD}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+
+  # ============================================
+  # Typesense Search Engine
+  # ============================================
+  typesense:
+    build:
+      context: .
+      dockerfile: Dockerfile.typesense
+    image: zevent-prod-typesense
+    restart: always
+    container_name: zevent-prod-typesense
+    env_file: .env.prod
+    environment:
+      TYPESENSE_DATA_DIR: /data
+      TYPESENSE_API_KEY: ${TYPESENSE_API_KEY}
+    # No external port exposure in production
+    expose:
+      - "8108"
+    volumes:
+      - typesense_prod_data:/data
+    networks:
+      - prod-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8108/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    command: >
+      --data-dir /data 
+      --api-key=${TYPESENSE_API_KEY} 
+      --enable-cors
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+
+  # ============================================
+  # AdonisJS Application (Production Mode)
+  # ============================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.adonis
+      target: production # Use production stage - minimal image
+      args:
+        NODE_ENV: production
+    container_name: zevent-prod-app
+    restart: always
+    env_file: .env.prod
+    environment:
+      # Core settings
+      NODE_ENV: production
+      PORT: 3333
+      HOST: 0.0.0.0
+      APP_KEY: ${APP_KEY}
+      APP_URL: ${APP_URL}
+
+      # Database
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE}
+
+      # Typesense
+      TYPESENSE_ENABLED: ${TYPESENSE_ENABLED:-true}
+      TYPESENSE_HOST: typesense
+      TYPESENSE_PORT: 8108
+      TYPESENSE_PROTOCOL: http
+      TYPESENSE_API_KEY: ${TYPESENSE_API_KEY}
+
+      # Session & Auth
+      SESSION_DRIVER: ${SESSION_DRIVER:-cookie}
+      ADMIN_API_TOKEN: ${ADMIN_API_TOKEN}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+
+      # Security
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY}
+
+      # Firebase
+      FIREBASE_SERVICE_ACCOUNT_PATH: ${FIREBASE_SERVICE_ACCOUNT_PATH}
+      FIREBASE_SERVICE_ACCOUNT: ${FIREBASE_SERVICE_ACCOUNT}
+
+      # Mail
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME}
+
+      # Storage
+      DRIVE_DISK: ${DRIVE_DISK:-fs}
+
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+
+    # No external port exposure - only accessible via Nginx
+    expose:
+      - "3333"
+
+    volumes:
+      # Only persistent data directories - NO bind mounts
+      - ./public/uploads:/app/public/uploads
+      - ./logs:/app/logs
+      - app_prod_tmp:/app/tmp
+
+    networks:
+      - prod-network
+
+    depends_on:
+      db:
+        condition: service_healthy
+      typesense:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3333/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+
+  # ============================================
+  # Nginx Reverse Proxy (Production)
+  # ============================================
+  nginx:
+    image: nginx:alpine
+    container_name: zevent-prod-nginx
+    restart: always
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      # Uncomment for SSL/HTTPS
+      # - "${NGINX_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./public/uploads:/app/public/uploads:ro
+      - nginx_prod_cache:/var/cache/nginx
+      - nginx_prod_logs:/var/log/nginx
+      # Uncomment for SSL certificates
+      # - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - prod-network
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  prod-network:
+    driver: bridge
+    name: zevent-prod-network
+
+# ============================================
+# Volumes
+# ============================================
+volumes:
+  mysql_prod_data:
+    name: zevent-prod-mysql-data
+  typesense_prod_data:
+    name: zevent-prod-typesense-data
+  app_prod_tmp:
+    name: zevent-prod-app-tmp
+  nginx_prod_cache:
+    name: zevent-prod-nginx-cache
+  nginx_prod_logs:
+    name: zevent-prod-nginx-logs

@@ -176,16 +176,8 @@ export default function Input({
             )}
           </div>
         )}
-
-        {variant === 'default' && (
-          <motion.div
-            className="absolute inset-0 rounded-xl border-2 border-primary-500 pointer-events-none"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: isFocused ? 1 : 0, scale: isFocused ? 1 : 0.95 }}
-            transition={{ duration: getAnimation('fast') / 1000 }}
-          />
-        )}
       </motion.div>
+
 
       {(error || success || hint) && (
         <motion.div

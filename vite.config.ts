@@ -15,6 +15,10 @@ export default defineConfig({
     tailwindcss(),
   ],
 
+  ssr: {
+    noExternal: ['react-easy-crop'],
+  },
+
   /**
    * Define aliases for importing modules from
    * your frontend code

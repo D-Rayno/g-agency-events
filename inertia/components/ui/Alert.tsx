@@ -81,9 +81,10 @@ export default function Alert({
       exit={{ opacity: 0, x: 50, scale: 0.95 }}
       transition={{ duration: getAnimation('normal') / 1000, type: 'spring', stiffness: 200 }}
     >
-      <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ duration: 0.5, repeat: 2 }}>
+      <div>
         <Icon className={`w-6 h-6 shrink-0 ${iconClasses}`} />
-      </motion.div>
+      </div>
+
 
       <div className="flex-1 min-w-0">
         {title && <h3 className="font-semibold mb-1">{title}</h3>}
@@ -96,8 +97,8 @@ export default function Alert({
           className={`shrink-0 transition-colors rounded-lg p-1 ${
             variant === 'solid' ? 'hover:bg-white/20' : 'hover:bg-black/5'
           }`}
-          whileHover={{ scale: 1.1, rotate: 90 }}
-          whileTap={{ scale: 0.9 }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
           aria-label="Fermer"
         >
           <XMarkIcon className="w-5 h-5" />

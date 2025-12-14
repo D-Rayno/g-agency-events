@@ -6,68 +6,55 @@ import { NextFn } from '@adonisjs/core/types/http'
  */
 export default class RateLimitMiddleware {
   private static requests = new Map<string, number[]>()
-  
-  // Configuration
-  private static readonly WINDOW_MS = 60000 // 1 minute
-  private static readonly MAX_REQUESTS = 100 // requests per window
-  
+
+  // ✅ IMPROVED - Per-route limits
+  private readonly LIMITS: Record<string, { window: number; max: number }> = {
+    '/api/admin/auth/login': { window: 300000, max: 5 }, // 5 per 5min
+    '/api/admin/auth/refresh': { window: 60000, max: 10 }, // 10 per min
+    '/api/admin/exports': { window: 60000, max: 3 }, // 3 exports per min
+    default: { window: 60000, max: 100 },
+  }
+
   async handle(ctx: HttpContext, next: NextFn) {
-    const identifier = ctx.request.ip() // Use IP as identifier
+    const identifier = `${ctx.request.ip()}-${ctx.request.url()}`
+    const route = ctx.request.url()
+
+    // Find matching limit
+    let limit = this.LIMITS.default
+    for (const [pattern, config] of Object.entries(this.LIMITS)) {
+      if (pattern !== 'default' && route.includes(pattern)) {
+        limit = config
+        break
+      }
+    }
+
     const now = Date.now()
-    
-    // Get or initialize request history
     const requestHistory = RateLimitMiddleware.requests.get(identifier) || []
-    
-    // Filter out old requests outside the time window
     const recentRequests = requestHistory.filter(
-      (timestamp) => now - timestamp < RateLimitMiddleware.WINDOW_MS
+      (timestamp) => now - timestamp < limit.window
     )
-    
-    // Check if rate limit exceeded
-    if (recentRequests.length >= RateLimitMiddleware.MAX_REQUESTS) {
+
+    if (recentRequests.length >= limit.max) {
       const oldestRequest = Math.min(...recentRequests)
-      const retryAfter = Math.ceil(
-        (oldestRequest + RateLimitMiddleware.WINDOW_MS - now) / 1000
-      )
-      
+      const retryAfter = Math.ceil((oldestRequest + limit.window - now) / 1000)
+
       ctx.response.header('Retry-After', String(retryAfter))
-      
+      ctx.response.header('X-RateLimit-Limit', String(limit.max))
+      ctx.response.header('X-RateLimit-Remaining', '0')
+
       return ctx.response.tooManyRequests({
-        error: 'Trop de requêtes',
-        message: `Limite de ${RateLimitMiddleware.MAX_REQUESTS} requêtes par minute dépassée. Veuillez réessayer dans ${retryAfter} secondes.`,
+        error: 'Rate limit exceeded',
+        message: `Maximum ${limit.max} requests per ${limit.window / 1000}s. Retry after ${retryAfter}s.`,
         retryAfter,
       })
     }
-    
-    // Add current request timestamp
+
     recentRequests.push(now)
     RateLimitMiddleware.requests.set(identifier, recentRequests)
-    
-    // Clean up old entries periodically
-    if (Math.random() < 0.01) {
-      // 1% chance to clean up
-      this.cleanup()
-    }
-    
+
+    ctx.response.header('X-RateLimit-Limit', String(limit.max))
+    ctx.response.header('X-RateLimit-Remaining', String(limit.max - recentRequests.length))
+
     return next()
-  }
-  
-  /**
-   * Clean up expired entries from memory
-   */
-  private cleanup() {
-    const now = Date.now()
-    
-    for (const [identifier, timestamps] of RateLimitMiddleware.requests.entries()) {
-      const recentTimestamps = timestamps.filter(
-        (timestamp) => now - timestamp < RateLimitMiddleware.WINDOW_MS
-      )
-      
-      if (recentTimestamps.length === 0) {
-        RateLimitMiddleware.requests.delete(identifier)
-      } else {
-        RateLimitMiddleware.requests.set(identifier, recentTimestamps)
-      }
-    }
   }
 }

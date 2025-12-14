@@ -1,7 +1,7 @@
-// inertia/components/registrations/Header.tsx
+// inertia/components/registrations/Header.tsx - ENHANCED VERSION
 import { motion } from 'motion/react'
-import { ArrowLeftIcon } from '@heroicons/react/24/outline'
-import Button from '~/components/ui/Button'
+import { TicketIcon } from '@heroicons/react/24/outline'
+import { useTheme } from '~/hooks/useTheme'
 
 interface RegistrationHeaderProps {
   title: string
@@ -9,23 +9,35 @@ interface RegistrationHeaderProps {
 }
 
 export default function RegistrationHeader({ title, description }: RegistrationHeaderProps) {
-  return (
-    <>
-      <motion.div className="mb-6" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-        <Button variant="ghost" iconLeft={ArrowLeftIcon} href="/registrations">
-          Retour à mes inscriptions
-        </Button>
-      </motion.div>
+  const { colors } = useTheme()
 
-      <motion.div
-        className="mb-8"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+  return (
+    <motion.div
+      className="mb-12"
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      {/* Decorative Header */}
+      <div
+        className="rounded-2xl p-8 mb-8"
+        style={{
+          background: `linear-gradient(135deg, ${colors.primary[500]}, ${colors.secondary[500]})`,
+        }}
       >
-        <h1 className="text-3xl font-bold text-neutral-900 mb-2">{title}</h1>
-        <p className="text-neutral-600">{description}</p>
-      </motion.div>
-    </>
+        <div className="flex items-center gap-4 mb-4">
+          <div
+            className="w-16 h-16 rounded-xl flex items-center justify-center"
+            style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
+          >
+            <TicketIcon className="w-8 h-8 text-white" />
+          </div>
+          <div>
+            <h1 className="text-4xl font-bold text-white drop-shadow-lg">{title}</h1>
+            <p className="text-white/90 text-lg mt-1">{description}</p>
+          </div>
+        </div>
+      </div>
+    </motion.div>
   )
 }

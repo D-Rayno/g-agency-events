@@ -117,30 +117,81 @@ export default class AuthController {
       })
 
       // Send verification email (outside transaction)
+      let emailSent = false
       try {
         await EmailService.sendVerificationEmail(user)
+        emailSent = true
       } catch (emailError) {
         console.error('Failed to send verification email:', emailError)
+        // Continue - account is created, user can request resend later
       }
 
-      session.flash(
-        'success',
-        'Inscription réussie ! Veuillez vérifier votre email pour activer votre compte.'
-      )
+      if (emailSent) {
+        session.flash(
+          'success',
+          'Inscription réussie ! Veuillez vérifier votre email pour activer votre compte.'
+        )
+      } else {
+        session.flash(
+          'warning',
+          'Inscription réussie ! Cependant, l\'email de vérification n\'a pas pu être envoyé. Veuillez contacter le support.'
+        )
+      }
+
       return response.redirect('/auth/login')
+
     } catch (error) {
       await trx.rollback()
       console.error("Erreur lors de l'inscription:", error)
 
-      if (error.code === 'ER_DUP_ENTRY' || error.message?.includes('unique')) {
-        session.flash('error', 'Cet email est déjà utilisé.')
+      // Check if it's a duplicate email error
+      if (error.code === 'ER_DUP_ENTRY' || error.message?.includes('unique') || error.message?.includes('duplicate')) {
+        // Try to find the user with this email
+        const emailFromRequest = request.input('email')
+
+        if (emailFromRequest) {
+          try {
+            const existingUser = await User.findBy('email', emailFromRequest)
+
+            if (existingUser && !existingUser.isEmailVerified) {
+              // User exists but hasn't verified email - resend verification
+              try {
+                await EmailService.sendVerificationEmail(existingUser)
+                session.flash(
+                  'info',
+                  'Cet email est déjà enregistré mais non vérifié. Un nouvel email de vérification vous a été envoyé.'
+                )
+              } catch (emailError) {
+                console.error('Failed to resend verification email:', emailError)
+                session.flash(
+                  'warning',
+                  'Cet email est déjà enregistré. Veuillez vérifier votre boîte mail ou contactez le support.'
+                )
+              }
+            } else {
+              // User exists and is verified - they should login
+              session.flash(
+                'error',
+                'Cet email est déjà utilisé. Si c\'est votre compte, veuillez vous connecter.'
+              )
+            }
+          } catch (findError) {
+            // Couldn't find user, show generic message
+            session.flash('error', 'Cet email est déjà utilisé.')
+          }
+        } else {
+          session.flash('error', 'Cet email est déjà utilisé.')
+        }
       } else {
-        session.flash('error', "Une erreur est survenue lors de l'inscription.")
+
+        // Generic error
+        session.flash('error', "Une erreur est survenue lors de l'inscription. Veuillez réessayer.")
       }
 
       return response.redirect().back()
     }
   }
+
 
   /**
    * Vérifie l'email de l'utilisateur
@@ -285,5 +336,65 @@ export default class AuthController {
     }
 
     return response.redirect().back()
+  }
+
+  /**
+   * Show public resend verification page
+   */
+  async showResendVerification({ inertia }: HttpContext) {
+    return inertia.render('auth/resend_verification')
+  }
+
+  /**
+   * Resend verification email (public - no auth required)
+   */
+  async resendVerificationPublic({ request, response, session }: HttpContext) {
+    try {
+      const email = request.input('email')
+
+      if (!email) {
+        session.flash('error', 'Veuillez fournir une adresse email.')
+        return response.redirect().back()
+      }
+
+      // Find user by email
+      const user = await User.findBy('email', email)
+
+      // Don't reveal whether email exists or not (security)
+      if (!user) {
+        session.flash(
+          'success',
+          'Si un compte non vérifié existe avec cet email, un nouvel email de vérification a été envoyé.'
+        )
+        return response.redirect('/auth/login')
+      }
+
+      // Check if already verified
+      if (user.isEmailVerified) {
+        session.flash('info', 'Ce compte est déjà vérifié. Vous pouvez vous connecter.')
+        return response.redirect('/auth/login')
+      }
+
+      // Send verification email
+      try {
+        await EmailService.sendVerificationEmail(user)
+        session.flash(
+          'success',
+          'Un nouvel email de vérification a été envoyé. Veuillez vérifier votre boîte mail.'
+        )
+      } catch (emailError) {
+        console.error('Failed to resend verification email:', emailError)
+        session.flash(
+          'error',
+          'Erreur lors de l\'envoi de l\'email. Veuillez réessayer ou contacter le support.'
+        )
+      }
+
+      return response.redirect('/auth/login')
+    } catch (error) {
+      console.error('Error in resendVerificationPublic:', error)
+      session.flash('error', 'Une erreur est survenue. Veuillez réessayer.')
+      return response.redirect().back()
+    }
   }
 }

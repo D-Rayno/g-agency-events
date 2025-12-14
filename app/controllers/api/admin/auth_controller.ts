@@ -2,13 +2,15 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import TokenStoreService from '#services/token_store_service'
 import { loginValidator } from '#validators/admin_login'
+import env from '#start/env'
 
 export default class AuthController {
   /**
-   * Enhanced authentication with device fingerprinting and FCM token
+   * Enhanced authentication with password verification
    * 
    * POST /api/admin/auth/login
    * Body: { 
+   *   password: "admin_password",
    *   deviceId: "unique_device_identifier",
    *   deviceName: "iPhone 14 Pro",
    *   deviceModel: "iPhone14,3",
@@ -20,11 +22,21 @@ export default class AuthController {
   async login({ request, response }: HttpContext) {
     try {
       const data = await request.validateUsing(loginValidator)
-      
+
+      // 🔒 VERIFY ADMIN PASSWORD
+      const adminPassword = env.get('ADMIN_PASSWORD')
+      if (data.password !== adminPassword) {
+        return response.unauthorized({
+          error: 'Identifiants invalides',
+          message: 'Le mot de passe administrateur est incorrect.',
+          code: 'INVALID_CREDENTIALS',
+        })
+      }
+
       // Get client information
       const ipAddress = request.ip()
       const userAgent = request.header('User-Agent') || 'unknown'
-      
+
       // Generate secure token pair
       const tokenPair = await TokenStoreService.generateTokenPair({
         deviceId: data.deviceId,
@@ -56,16 +68,16 @@ export default class AuthController {
       })
     } catch (error) {
       console.error('Login error:', error)
-      
+
       if (error.message?.includes('Too many devices')) {
         return response.tooManyRequests({
           error: 'Limite atteinte',
           message: error.message,
         })
       }
-      
+
       return response.badRequest({
-        error: 'Validation error',
+        error: 'Erreur de validation',
         message: error.messages || 'Les données fournies sont invalides.',
       })
     }
@@ -99,7 +111,7 @@ export default class AuthController {
     if (!newTokenPair) {
       return response.unauthorized({
         error: 'Refresh token invalide',
-        message: 'Le refresh token est invalide, expiré ou révoqué. Veuillez vous reconnecter.',
+        message: 'Le refresh token est invalide, expiré ou révoqué.',
         code: 'REFRESH_TOKEN_INVALID',
       })
     }
