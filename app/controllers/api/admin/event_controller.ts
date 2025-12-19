@@ -135,13 +135,15 @@ export default class EventController {
    * SHOW - Display single event details
    * ------------------------------------------------------------
    */
-  async show({ params, inertia, auth, response, session }: HttpContext) {
+  async show({ params, auth, response }: HttpContext) {
     const user = auth.user
     const event = await Event.find(params.id)
 
     if (!event || !event.isPublic) {
-      session.flash('error', "Cet événement n'existe pas ou n'est pas accessible.")
-      return response.redirect('/events')
+      return response.notFound({
+        success: false,
+        message: "Cet événement n'existe pas ou n'est pas accessible.",
+      })
     }
 
     await event.updateStatus()
@@ -155,42 +157,45 @@ export default class EventController {
         .first()
       : null
 
-    return inertia.render('events/show', {
-      event: {
-        id: event.id,
-        name: event.name,
-        description: event.description,
-        location: event.location,
-        province: event.province,
-        commune: event.commune,
-        startDate: event.startDate.toISO(),
-        endDate: event.endDate.toISO(),
-        category: event.category,
-        capacity: event.capacity,
-        registeredCount: event.registeredCount,
-        availableSeats: event.availableSeats,
-        basePrice: event.basePrice,
-        imageUrl: event.imageUrl,
-        isFull: event.isFull,
-        isUpcoming: event.isUpcoming(),
-        isOngoing: event.isOngoing(),
-        isFinished: event.isFinished(),
-        // Game metadata
-        eventType: event.eventType,
-        gameType: event.gameType,
-        difficulty: event.difficulty,
-        difficultyBadge: event.getDifficultyBadge(),
-        intensityBadge: event.getIntensityBadge(),
+    return response.ok({
+      success: true,
+      data: {
+        event: {
+          id: event.id,
+          name: event.name,
+          description: event.description,
+          location: event.location,
+          province: event.province,
+          commune: event.commune,
+          startDate: event.startDate.toISO(),
+          endDate: event.endDate.toISO(),
+          category: event.category,
+          capacity: event.capacity,
+          registeredCount: event.registeredCount,
+          availableSeats: event.availableSeats,
+          basePrice: event.basePrice,
+          imageUrl: event.imageUrl,
+          isFull: event.isFull,
+          isUpcoming: event.isUpcoming(),
+          isOngoing: event.isOngoing(),
+          isFinished: event.isFinished(),
+          // Game metadata
+          eventType: event.eventType,
+          gameType: event.gameType,
+          difficulty: event.difficulty,
+          difficultyBadge: event.getDifficultyBadge(),
+          intensityBadge: event.getIntensityBadge(),
+        },
+        registration: userRegistration
+          ? {
+            id: userRegistration.id,
+            status: userRegistration.status,
+            createdAt: userRegistration.createdAt.toISO(),
+          }
+          : null,
+        isRegistered: !!userRegistration,
+        userAge: user?.age,
       },
-      registration: userRegistration
-        ? {
-          id: userRegistration.id,
-          status: userRegistration.status,
-          createdAt: userRegistration.createdAt.toISO(),
-        }
-        : null,
-      isRegistered: !!userRegistration,
-      userAge: user?.age,
     })
   }
 

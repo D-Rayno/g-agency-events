@@ -149,8 +149,9 @@
       "lastUsedAt": "2025-12-10T14:31:59.471+00:00",
       "lastIpAddress": "172.18.0.5",
       "isRevoked": false,
-      "failedAttempts": 0,
-      "loginCount": 1
+      "failedAttempts": 1,
+      "loginCount": 1,
+      "lastFailedAttempt": "2025-12-14T14:26:42.836+00:00"
     },
     "cd1f3ad672c29ab90f8bfbc4a90196d5400b1cf03d4abf1ff93ee6f13d5b12f1": {
       "hashedToken": "cd1f3ad672c29ab90f8bfbc4a90196d5400b1cf03d4abf1ff93ee6f13d5b12f1",
@@ -247,13 +248,131 @@
       "isRevoked": false,
       "failedAttempts": 0,
       "loginCount": 1
+    },
+    "f6279b5e5a382df6bd4884963196483e9d140640e650d3885c309f26d5db56fb": {
+      "hashedToken": "f6279b5e5a382df6bd4884963196483e9d140640e650d3885c309f26d5db56fb",
+      "encryptedRefreshToken": "6380eebd50d1041f792e13993dd07f03:1d0e3cdb58cce2ef86a0c67410f395d1:318b7d1830d41063e481b1796aa9861f41842c307f4a942823067114a759e56b799ac2c87bd401ec8237f57fc40362efe491544f9cb8c6f826b440f65cb2c311ac98824861e8b04cad2cd1c6582f7db59dbc8fb79f30e254c2b60468a178eec7aced622c9d1402c15abbc7c30e88415eeca9d721c4485de97fbce29402680c12",
+      "deviceId": "device_1765700312947",
+      "deviceName": "sdk_gphone64_x86_64",
+      "deviceModel": "sdk_gphone64_x86_64",
+      "osVersion": "16",
+      "appVersion": "1.0.0",
+      "ipAddress": "172.18.0.3",
+      "userAgent": "okhttp/4.12.0",
+      "deviceFingerprint": "dba525123ea18277f2f86b40f8c8b09ce60669c6104e64341d1ebe8bdce99c33",
+      "createdAt": "2025-12-14T08:18:37.520+00:00",
+      "expiresAt": "2025-12-21T08:18:37.520+00:00",
+      "lastUsedAt": "2025-12-14T08:50:12.917+00:00",
+      "lastIpAddress": "172.18.0.3",
+      "isRevoked": false,
+      "failedAttempts": 0,
+      "loginCount": 1
+    },
+    "2ef79ab6b9232d9f431ad5b815fcd822a74617ce0af2a99807ce557645fbf97f": {
+      "hashedToken": "2ef79ab6b9232d9f431ad5b815fcd822a74617ce0af2a99807ce557645fbf97f",
+      "encryptedRefreshToken": "88def1e9e04851a3e0ab0c7eec492942:e64dcb9ddec27c6fc687523f6203e95c:50cfbca193ac0f5adce4f3ae6bde326f419d0dfd3aef1c09905c390614c2f86b29ceba70ba1d8214e108d88f938d0ccc5ad363b3c6665491251e21d99384119e86448ad23057322918cd5ab62c1ebe19869b4dce169e705194c5aceaf0c4cdd15dc820b6244ef614d87ca0a30c07830230de1460c0d47f291998083dc05aa4ac",
+      "deviceId": "device_1765708484980",
+      "deviceName": "sdk_gphone64_x86_64",
+      "deviceModel": "sdk_gphone64_x86_64",
+      "osVersion": "16",
+      "appVersion": "1.0.0",
+      "ipAddress": "172.18.0.3",
+      "userAgent": "okhttp/4.12.0",
+      "deviceFingerprint": "aa25710c06ff72855f8bd82efc46d6b9413d124c7f6f4ce635d294c9b6717419",
+      "createdAt": "2025-12-14T10:34:50.300+00:00",
+      "expiresAt": "2025-12-21T10:34:50.300+00:00",
+      "lastUsedAt": "2025-12-14T12:37:12.314+00:00",
+      "lastIpAddress": "172.18.0.3",
+      "isRevoked": false,
+      "failedAttempts": 0,
+      "loginCount": 1
+    },
+    "51930620a985403a81f6f32ef85ef91f8d2eb4759ea6707ee59efe64847f15cf": {
+      "hashedToken": "51930620a985403a81f6f32ef85ef91f8d2eb4759ea6707ee59efe64847f15cf",
+      "encryptedRefreshToken": "c52f08f78cd0125cc091110b36d3b6ed:8cbe4645e3900ceceb21f6a1c6df6925:b063f2036fc5fb0c622c6fb635795090f3d4308c8cd7304eca9c4c253da10bad3667ca118b6e27cacb760025940873726bd7027988546cb46d376693ef9c0d2022a3682a6d5a728897afcd2a31b3490685e657236ac3754841d7696f2cfcb0ac65f71566c5645a2caa1ea67dff385a65aa435ceaddc9e5df600a52a80b481279",
+      "deviceId": "device_1765716619581",
+      "deviceName": "sdk_gphone64_x86_64",
+      "deviceModel": "sdk_gphone64_x86_64",
+      "osVersion": "16",
+      "appVersion": "1.0.0",
+      "ipAddress": "172.18.0.3",
+      "userAgent": "okhttp/4.12.0",
+      "deviceFingerprint": "0aeb5cfc257ab62b932365b0b941c56acb38842c1083b5723a4bbeeb48cc59ed",
+      "createdAt": "2025-12-14T12:50:23.515+00:00",
+      "expiresAt": "2025-12-21T12:50:23.515+00:00",
+      "lastUsedAt": "2025-12-14T14:30:06.146+00:00",
+      "lastIpAddress": "172.18.0.3",
+      "isRevoked": false,
+      "failedAttempts": 1,
+      "loginCount": 1,
+      "lastFailedAttempt": "2025-12-14T14:45:25.441+00:00"
+    },
+    "8ef25418922bf5c51261ef528ea2dbc9f2fb8401d6f49fe7d3fa056f958b27ef": {
+      "hashedToken": "8ef25418922bf5c51261ef528ea2dbc9f2fb8401d6f49fe7d3fa056f958b27ef",
+      "encryptedRefreshToken": "cf3f66292689a33ef23e43ce3e5f0bef:f951a5796a781a25539c1694fcfddc0f:b7fc51d9e95671adb8a564d1ebfcfffc29c4d7f1bdc8372f953c5372f695f1b1f2c4cbf9f84f054c21664dcc7789a96c44c6336165cd56412500eba5603185da95dbd09d03e6a1768dfbe878bbf52d3436f4653c4d5274dd66a6aeb13af434213b3fbc2abfe18135dced6f489e5c8cc8ef89acef118a750fe0e44938dae87816",
+      "deviceId": "postman-client-id",
+      "deviceName": "Postman Client",
+      "deviceModel": "Postman",
+      "osVersion": "1.0.0",
+      "appVersion": "1.0.0",
+      "ipAddress": "172.18.0.3",
+      "userAgent": "PostmanRuntime/7.49.1",
+      "deviceFingerprint": "9751ee724fab5274d3aad1fc22c52b4dbda5eef15b3f2acc797333fe94f7df90",
+      "createdAt": "2025-12-14T14:26:54.689+00:00",
+      "expiresAt": "2025-12-21T14:26:54.689+00:00",
+      "lastUsedAt": "2025-12-14T14:26:58.891+00:00",
+      "lastIpAddress": "172.18.0.3",
+      "isRevoked": false,
+      "failedAttempts": 1,
+      "loginCount": 1,
+      "lastFailedAttempt": "2025-12-14T15:06:26.571+00:00"
+    },
+    "1c3dd5d7b93327fa38ed8274408f80016112a91b13e6a596e71b06cf187455e4": {
+      "hashedToken": "1c3dd5d7b93327fa38ed8274408f80016112a91b13e6a596e71b06cf187455e4",
+      "encryptedRefreshToken": "f8584f27d97cef925c5ba25663fee4cd:c7c0b8e1c27882e558cebae1437f0a5c:2cf5fb28bb4e61111c11d1337d6cfd02625cc974de88e75c6145f34b6b59cc5c4b1af103339ac4689bccd4f754edc92d2cb81957556ff12e2eb7ae839e67afdcbdc991f18ba780910db083ec6d309a62ba0ca10d918eba49d8b71c77d968de2a1d4982de4208c755c11fb725e08592a1e4bd16f8bf24f85f6e88f05715be8aa8",
+      "deviceId": "device_1765723549462",
+      "deviceName": "sdk_gphone64_x86_64",
+      "deviceModel": "sdk_gphone64_x86_64",
+      "osVersion": "16",
+      "appVersion": "1.0.0",
+      "ipAddress": "172.18.0.5",
+      "userAgent": "okhttp/4.12.0",
+      "deviceFingerprint": "04000eeda9718abaa93d58e1d168e370197e803f09de1b2d5de9e57d2ecd7192",
+      "createdAt": "2025-12-14T14:45:50.273+00:00",
+      "expiresAt": "2025-12-21T14:45:50.273+00:00",
+      "lastUsedAt": "2025-12-14T15:31:20.423+00:00",
+      "lastIpAddress": "172.18.0.5",
+      "isRevoked": false,
+      "failedAttempts": 0,
+      "loginCount": 1
+    },
+    "a4b6fc19ce9651f88f6ef54beedd63c6450ba89576e048e19df3b387b1b96691": {
+      "hashedToken": "a4b6fc19ce9651f88f6ef54beedd63c6450ba89576e048e19df3b387b1b96691",
+      "encryptedRefreshToken": "bcc6278b7ff6c0c3f8d2d4ef61dec7b9:6ea2f487b1868bad3664d95d820f6028:a494d4d5d7356f071bef2e6b383e6f179e88a7193459f8c89fbb7f864dca3a8d3ed4cb1c2a2290e83d830705e62c2f416efb12649d9ce8fd5f0f7b0dfb59e65176c2797f30c3c9d077cf46021166a7fe8bf74514be6a536585c5c96daf6266fec3da9c73f25959174f708d678c63dc9830994e7f8607b1d878a47176b804713c",
+      "deviceId": "postman-client-id",
+      "deviceName": "Postman Client",
+      "deviceModel": "Postman",
+      "osVersion": "1.0.0",
+      "appVersion": "1.0.0",
+      "ipAddress": "172.18.0.5",
+      "userAgent": "PostmanRuntime/7.49.1",
+      "deviceFingerprint": "9751ee724fab5274d3aad1fc22c52b4dbda5eef15b3f2acc797333fe94f7df90",
+      "createdAt": "2025-12-14T15:06:33.874+00:00",
+      "expiresAt": "2025-12-21T15:06:33.874+00:00",
+      "lastUsedAt": "2025-12-14T15:18:53.956+00:00",
+      "lastIpAddress": "172.18.0.5",
+      "isRevoked": false,
+      "failedAttempts": 0,
+      "loginCount": 1
     }
   },
   "revokedTokens": [],
   "deviceIndex": {
     "postman-client-id": [
       "9a4626f6bd48a7516fd7a3873d67244b9671aa2c7fc819f4549cd544d302d2a8",
-      "2843160c11e0a5ba275d5b54a9a7acbf9f4d0d39c1885ba2df8bf36dbccc89b8"
+      "2843160c11e0a5ba275d5b54a9a7acbf9f4d0d39c1885ba2df8bf36dbccc89b8",
+      "8ef25418922bf5c51261ef528ea2dbc9f2fb8401d6f49fe7d3fa056f958b27ef",
+      "a4b6fc19ce9651f88f6ef54beedd63c6450ba89576e048e19df3b387b1b96691"
     ],
     "device_1765355196005": [
       "7713bc55cfa9704aaca1bb991125d27a965e7c8f56fe418456a7ee8292f8ee83"
@@ -287,6 +406,18 @@
     ],
     "device_1765457814597": [
       "f3d488817962ad6fdaee4cd8a7f9a0ecae63be96431456fe344ed1c76d17a177"
+    ],
+    "device_1765700312947": [
+      "f6279b5e5a382df6bd4884963196483e9d140640e650d3885c309f26d5db56fb"
+    ],
+    "device_1765708484980": [
+      "2ef79ab6b9232d9f431ad5b815fcd822a74617ce0af2a99807ce557645fbf97f"
+    ],
+    "device_1765716619581": [
+      "51930620a985403a81f6f32ef85ef91f8d2eb4759ea6707ee59efe64847f15cf"
+    ],
+    "device_1765723549462": [
+      "1c3dd5d7b93327fa38ed8274408f80016112a91b13e6a596e71b06cf187455e4"
     ]
   },
   "ipIndex": {
@@ -304,10 +435,16 @@
       "cd1f3ad672c29ab90f8bfbc4a90196d5400b1cf03d4abf1ff93ee6f13d5b12f1",
       "0242572c482971dba371bb748bd291a510542579d3c4a466bc09f08623becb59",
       "d8c81e222f492dbf38f3cbad581336125da6c5ce0430ea39be9fca191c31bc33",
-      "703e9c8e31c3adc06dfad890a63d66ade605281e8cdbcb66e481d6e2c6f48bc2"
+      "703e9c8e31c3adc06dfad890a63d66ade605281e8cdbcb66e481d6e2c6f48bc2",
+      "1c3dd5d7b93327fa38ed8274408f80016112a91b13e6a596e71b06cf187455e4",
+      "a4b6fc19ce9651f88f6ef54beedd63c6450ba89576e048e19df3b387b1b96691"
     ],
     "172.18.0.3": [
-      "f3d488817962ad6fdaee4cd8a7f9a0ecae63be96431456fe344ed1c76d17a177"
+      "f3d488817962ad6fdaee4cd8a7f9a0ecae63be96431456fe344ed1c76d17a177",
+      "f6279b5e5a382df6bd4884963196483e9d140640e650d3885c309f26d5db56fb",
+      "2ef79ab6b9232d9f431ad5b815fcd822a74617ce0af2a99807ce557645fbf97f",
+      "51930620a985403a81f6f32ef85ef91f8d2eb4759ea6707ee59efe64847f15cf",
+      "8ef25418922bf5c51261ef528ea2dbc9f2fb8401d6f49fe7d3fa056f958b27ef"
     ]
   }
 }
