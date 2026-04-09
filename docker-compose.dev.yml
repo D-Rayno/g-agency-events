@@ -77,7 +77,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile.adonis
+      dockerfile: Dockerfile
       target: development # Use development stage with all dev dependencies
       args:
         NODE_ENV: development

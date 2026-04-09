@@ -27,8 +27,8 @@ PROD_COMPOSE_FILE := docker-compose.prod.yml
 PROJECT_NAME := zevent
 
 # Load environment variables
-ifneq (,$(wildcard ./.env.docker))
-    include .env.docker
+ifneq (,$(wildcard ./.env))
+    include .env
     export
 endif
 
@@ -324,7 +324,7 @@ doctor: ## Run system diagnostics
 	@docker compose version
 	@echo ""
 	@echo "$(YELLOW)2. Environment files:$(NC)"
-	@if [ -f .env.docker ]; then echo "  $(GREEN)✓ .env.docker exists$(NC)"; else echo "  $(RED)✗ .env.docker missing$(NC)"; fi
+	@if [ -f .env ]; then echo "  $(GREEN)✓ .env exists$(NC)"; else echo "  $(RED)✗ .env missing$(NC)"; fi
 	@if [ -f .env.prod ]; then echo "  $(GREEN)✓ .env.prod exists$(NC)"; else echo "  $(RED)✗ .env.prod missing$(NC)"; fi
 	@if [ -f $(DEV_COMPOSE_FILE) ]; then echo "  $(GREEN)✓ $(DEV_COMPOSE_FILE) exists$(NC)"; else echo "  $(RED)✗ $(DEV_COMPOSE_FILE) missing$(NC)"; fi
 	@if [ -f $(PROD_COMPOSE_FILE) ]; then echo "  $(GREEN)✓ $(PROD_COMPOSE_FILE) exists$(NC)"; else echo "  $(RED)✗ $(PROD_COMPOSE_FILE) missing$(NC)"; fi

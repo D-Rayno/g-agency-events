@@ -88,7 +88,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile.adonis
+      dockerfile: Dockerfile
       target: production # Use production stage - minimal image
       args:
         NODE_ENV: production
